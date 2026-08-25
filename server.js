@@ -9,7 +9,6 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -21,23 +20,9 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 
-const allowedCertDir = path.resolve(__dirname, "artifacts", "cert");
-
-function readCertFile(relativePath) {
-    var resolved = path.resolve(__dirname, relativePath);
-    var normalized = path.normalize(resolved);
-    if (!normalized.startsWith(allowedCertDir + path.sep) && normalized !== allowedCertDir) {
-        throw new Error("Certificate path is outside the allowed directory: " + normalized);
-    }
-    return fs.readFileSync(normalized);
-}
-
-var keyPath = path.join("artifacts", "cert", "server.key");
-var certPath = path.join("artifacts", "cert", "server.crt");
-
 const httpsOptions = {
-    key: readCertFile(keyPath),
-    cert: readCertFile(certPath)
+    key: fs.readFileSync(path.resolve(__dirname, "artifacts", "cert", "server.key")),
+    cert: fs.readFileSync(path.resolve(__dirname, "artifacts", "cert", "server.crt"))
 };
 
 MongoClient.connect(db, (err, db) => {
@@ -159,12 +144,5 @@ MongoClient.connect(db, (err, db) => {
         console.log(`Express https server listening on port ${port}`);
     });
 
-    // Only start plaintext HTTP in development when explicitly allowed
-    if (process.env.ALLOW_HTTP === "true") {
-        const httpPort = parseInt(process.env.HTTP_PORT, 10) || (port + 80);
-        http.createServer(app).listen(httpPort, () => {
-            console.log(`Express http server listening on port ${httpPort} (development only)`);
-        });
-    }
 
 });
