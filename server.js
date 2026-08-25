@@ -11,7 +11,7 @@ const swig = require("swig");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const fs = require("fs");
 const https = require("https");
-const path = require("path");
+
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -19,8 +19,8 @@ const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
 // Load keys for establishing secure HTTPS connection
 const httpsOptions = {
-    key: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.key")),
-    cert: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.crt"))
+    key: fs.readFileSync("./artifacts/cert/server.key"),
+    cert: fs.readFileSync("./artifacts/cert/server.crt")
 };
 
 MongoClient.connect(db, (err, db) => {
