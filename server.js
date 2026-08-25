@@ -132,7 +132,7 @@ MongoClient.connect(db, (err, db) => {
             console.log(`Express https server listening on port ${port}`);
         });
     } else {
-        console.warn("WARNING: TLS_KEY_PATH and TLS_CERT_PATH not set or files not found. Starting in insecure HTTP mode.");
+        console.warn("WARNING: TLS_KEY_PATH/TLS_CERT_PATH not set or missing. Starting in HTTP mode.");
         http.createServer(app).listen(port, () => {
             console.log(`Express http server listening on port ${port}`);
         });
