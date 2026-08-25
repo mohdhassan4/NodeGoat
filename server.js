@@ -9,7 +9,6 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -152,7 +151,7 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Prefer HTTPS when TLS certificates are available; fall back to HTTP otherwise
+    // Require HTTPS — refuse to start without TLS certificates
     // Re-validate paths at point of use to ensure no traversal reaches fs calls
     const safeKeyPath = validateCertPath(certKeyPath);
     const safeCertPath = validateCertPath(certFilePath);
@@ -165,9 +164,9 @@ MongoClient.connect(db, (err, db) => {
             console.log(`Express https server listening on port ${port}`);
         });
     } else {
-        http.createServer(app).listen(port, () => {
-            console.log(`Express http server listening on port ${port} (TLS certs not found)`);
-        });
+        console.error("TLS certificates not found. Server requires HTTPS to start.");
+        console.error("Provide valid cert and key at: " + safeKeyPath + ", " + safeCertPath);
+        process.exit(1);
     }
 
 });
