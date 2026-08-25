@@ -85,7 +85,8 @@ MongoClient.connect(db, (err, db) => {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             domain: process.env.APP_DOMAIN || undefined,
-            maxAge: 2 * 60 * 60 * 1000
+            maxAge: 2 * 60 * 60 * 1000,
+            path: '/'
         }
     }));
 
