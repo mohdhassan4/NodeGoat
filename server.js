@@ -15,17 +15,11 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
 // Fix for A6-Sensitive Data Exposure
 // Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
-const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
+const httpsEnabled = fs.existsSync(__dirname + "/artifacts/cert/server.crt") && fs.existsSync(__dirname + "/artifacts/cert/server.key");
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -82,21 +76,16 @@ MongoClient.connect(db, (err, db) => {
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 2 * 60 * 60 * 1000
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
         key: "sessionId",
-        */
-
-        /*
-        // Fix for A3 - XSS
-        // TODO: Add "maxAge"
-        cookie: {
-            httpOnly: true
-            // Remember to start an HTTPS server to get this working
-            // secure: true
-        }
         */
 
     }));
@@ -141,17 +130,19 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-
-    /*
-    // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    // Use HTTPS when certificates are available, fall back to HTTP for development
+    if (httpsEnabled) {
+        const httpsOptions = {
+            key: fs.readFileSync(__dirname + "/artifacts/cert/server.key"),
+            cert: fs.readFileSync(__dirname + "/artifacts/cert/server.crt")
+        };
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port} (no TLS certs found)`);
+        });
+    }
 
 });
