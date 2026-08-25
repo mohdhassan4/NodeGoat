@@ -139,8 +139,17 @@ MongoClient.connect(db, (err, db) => {
 
     // Fix for A6-Sensitive Data Exposure
     // Use secure HTTPS protocol when TLS certificates are available
-    const tlsKeyPath = process.env.TLS_KEY_PATH || path.resolve(__dirname, "./artifacts/cert/server.key");
-    const tlsCertPath = process.env.TLS_CERT_PATH || path.resolve(__dirname, "./artifacts/cert/server.crt");
+    const safePath = (filePath) => {
+        const resolved = path.resolve(filePath);
+        const normalized = path.normalize(resolved);
+        if (normalized.includes("..")) {
+            throw new Error("Path traversal detected: " + filePath);
+        }
+        return normalized;
+    };
+
+    const tlsKeyPath = safePath(process.env.TLS_KEY_PATH || path.resolve(__dirname, "./artifacts/cert/server.key"));
+    const tlsCertPath = safePath(process.env.TLS_CERT_PATH || path.resolve(__dirname, "./artifacts/cert/server.crt"));
 
     if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
         const httpsOptions = {
