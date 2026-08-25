@@ -86,7 +86,8 @@ MongoClient.connect(db, (err, db) => {
         cookie: {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
-            path: "/"
+            path: "/",
+            maxAge: 86400000 // 24 hours in milliseconds
         }
         /*
         // Fix for A5 - Security MisConfig
