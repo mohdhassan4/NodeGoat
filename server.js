@@ -89,6 +89,8 @@ MongoClient.connect(db, (err, db) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
         secret: cookieSecret,
+        // Use generic cookie name to avoid fingerprinting
+        name: "id",
         // Both mandatory in Express v4
         saveUninitialized: true,
         resave: true,
