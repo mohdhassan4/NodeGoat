@@ -82,6 +82,8 @@ MongoClient.connect(db, (err, db) => {
         resave: true,
         cookie: {
             httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
             domain: process.env.DOMAIN || "localhost",
             path: "/"
         }
