@@ -9,7 +9,6 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
@@ -145,7 +144,7 @@ MongoClient.connect(db, (err, db) => {
         });
     } else {
         // HTTP fallback for development when TLS is not configured
-        http.createServer(app).listen(port, () => {
+        app.listen(port, () => {
             console.log(`Express http server listening on port ${port} (TLS not configured)`);
         });
     }
