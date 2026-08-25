@@ -20,9 +20,22 @@ const { port, db, cookieSecret, hostName } = require("./config/config"); // Appl
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+
+// Resolve cert paths and validate they remain within the expected base directory
+const certDir = path.join(__dirname, "artifacts", "cert");
+const keyPath = path.resolve(certDir, "server.key");
+const certPath = path.resolve(certDir, "server.crt");
+
+if (!keyPath.startsWith(certDir + path.sep) && keyPath !== certDir) {
+    throw new Error("Invalid key path: path traversal detected");
+}
+if (!certPath.startsWith(certDir + path.sep) && certPath !== certDir) {
+    throw new Error("Invalid cert path: path traversal detected");
+}
+
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath)
 };
 
 MongoClient.connect(db, (err, db) => {
