@@ -94,6 +94,7 @@ MongoClient.connect(db, (err, db) => {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             domain: process.env.COOKIE_DOMAIN || "localhost",
+            path: "/",
             maxAge: 2 * 60 * 60 * 1000 // 2 hours
         }
         /*
