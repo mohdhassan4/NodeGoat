@@ -10,22 +10,14 @@ const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
-// Fix for A6-Sensitive Data Exposure
-// Load keys for establishing secure HTTPS connection
-const fs = require("fs");
-const https = require("https");
-const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -141,17 +133,48 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-
-    /*
     // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    // Use secure HTTPS protocol when TLS certificates are available
+    const tlsKeyPath = process.env.TLS_KEY_PATH || process.env.HTTPS_KEY;
+    const tlsCertPath = process.env.TLS_CERT_PATH || process.env.HTTPS_CERT;
+
+    const validTlsExtensions = [".pem", ".crt", ".key", ".cert"];
+    const validateTlsPath = function(filePath) {
+        var resolved = path.resolve(filePath);
+        var allowedDirs = ["/etc/ssl", "/etc/pki", "/etc/letsencrypt", process.cwd()];
+        if (process.env.TLS_CERT_DIR) {
+            allowedDirs.push(path.resolve(process.env.TLS_CERT_DIR));
+        }
+        var isAllowed = allowedDirs.some((dir) =>
+            resolved.startsWith(dir + path.sep) || resolved === dir
+        );
+        if (!isAllowed) {
+            throw new Error("TLS path outside allowed directories: " + resolved);
+        }
+        var ext = path.extname(resolved).toLowerCase();
+        if (validTlsExtensions.indexOf(ext) === -1) {
+            throw new Error("Invalid TLS file extension: " + ext);
+        }
+        var stat = fs.statSync(resolved);
+        if (!stat.isFile()) {
+            throw new Error("TLS path is not a regular file: " + resolved);
+        }
+        return resolved;
+    };
+
+    if (tlsKeyPath && tlsCertPath) {
+        const httpsOptions = {
+            key: fs.readFileSync(validateTlsPath(tlsKeyPath)),
+            cert: fs.readFileSync(validateTlsPath(tlsCertPath))
+        };
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        // Fallback to HTTP when TLS termination is handled externally (e.g. load balancer)
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port} (no TLS certificates configured)`);
+        });
+    }
 
 });
