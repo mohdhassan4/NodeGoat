@@ -31,7 +31,8 @@ if (!certPath.startsWith(certDir + path.sep)) {
 if (!keyPath.startsWith(certDir + path.sep)) {
     throw new Error("Key path resolves outside allowed directory");
 }
-const tlsEnabled = fs.existsSync(keyPath) && fs.existsSync(certPath);
+const tlsEnabled = fs.existsSync(path.join(__dirname, "artifacts", "cert", "server.key")) &&
+    fs.existsSync(path.join(__dirname, "artifacts", "cert", "server.crt"));
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -152,8 +153,8 @@ MongoClient.connect(db, (err, db) => {
     // Prefer HTTPS when TLS certificates are available
     if (tlsEnabled) {
         const httpsOptions = {
-            key: fs.readFileSync(keyPath),
-            cert: fs.readFileSync(certPath)
+            key: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.key")),
+            cert: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.crt"))
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
