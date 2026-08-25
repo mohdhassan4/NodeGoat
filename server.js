@@ -10,6 +10,9 @@ const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -146,10 +149,21 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
+    // Use HTTPS when TLS certificates are available
+    if (process.env.TLS_KEY_PATH && process.env.TLS_CERT_PATH) {
+        var httpsOptions = {
+            key: fs.readFileSync(path.resolve(__dirname, process.env.TLS_KEY_PATH)),
+            cert: fs.readFileSync(path.resolve(__dirname, process.env.TLS_CERT_PATH))
+        };
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        console.warn("WARNING: TLS_KEY_PATH and TLS_CERT_PATH not set. Falling back to HTTP (insecure).");
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port}`);
+        });
+    }
 
     /*
     // Fix for A6-Sensitive Data Exposure
