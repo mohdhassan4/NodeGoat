@@ -15,17 +15,32 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
 // Fix for A6-Sensitive Data Exposure
 // Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
+
+// Helper: resolve path segments under a base directory, preventing path traversal
+function safePath(base, ...segments) {
+    const resolved = path.normalize(path.resolve(base, ...segments));
+    if (!resolved.startsWith(base + path.sep) && resolved !== base) {
+        throw new Error("Invalid path: traversal detected");
+    }
+    return resolved;
+}
+
+const basePath = path.resolve(__dirname);
+const certPath = safePath(basePath, "artifacts", "cert", "server.crt");
+const keyPath = safePath(basePath, "artifacts", "cert", "server.key");
+const tlsAvailable = fs.existsSync(certPath) && fs.existsSync(keyPath);
+let httpsOptions = null;
+if (tlsAvailable) {
+    httpsOptions = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath)
+    };
+}
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -82,7 +97,11 @@ MongoClient.connect(db, (err, db) => {
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            httpOnly: true,
+            secure: true
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
@@ -141,17 +160,18 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-
-    /*
     // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    // Use secure HTTPS protocol when TLS certificates are available
+    if (httpsOptions) {
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        // Fallback: no TLS certificates available — start HTTP with security warning
+        console.warn("WARNING: TLS certificates not found. Starting insecure HTTP server. Configure TLS certificates for production use.");
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port} (insecure)`);
+        });
+    }
 
 });
