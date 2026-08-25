@@ -103,8 +103,12 @@ MongoClient.connect(db, (err, db) => {
         saveUninitialized: true,
         resave: true,
         cookie: {
+            httpOnly: true,
+            secure: true,
             domain: process.env.COOKIE_DOMAIN || "localhost",
-            path: "/"
+            path: "/",
+            maxAge: 2 * 60 * 60 * 1000,
+            expires: new Date(Date.now() + 2 * 60 * 60 * 1000)
         }
         /*
         // Fix for A5 - Security MisConfig
