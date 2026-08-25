@@ -9,7 +9,6 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
@@ -123,25 +122,20 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Use HTTPS when SSL cert/key are available; fall back to HTTP otherwise
-    const sslKeyPath = process.env.SSL_KEY_PATH;
-    const sslCertPath = process.env.SSL_CERT_PATH;
-    const sslBasePath = process.env.SSL_BASE_PATH || __dirname;
+    const sslBasePath = path.resolve(process.env.SSL_BASE_PATH || __dirname);
+    const sslKeyRaw = process.env.SSL_KEY_PATH || "";
+    const sslCertRaw = process.env.SSL_CERT_PATH || "";
 
-    function isPathWithinBase(filePath, basePath) {
-        var resolvedBase = path.resolve(basePath);
-        var resolvedFilePath = path.resolve(filePath);
-        return resolvedFilePath.startsWith(resolvedBase + path.sep) ||
-            resolvedFilePath === resolvedBase;
-    }
+    const resolvedKey = path.normalize(path.resolve(sslBasePath, sslKeyRaw));
+    const resolvedCert = path.normalize(path.resolve(sslBasePath, sslCertRaw));
 
-    const resolvedKey = sslKeyPath ? path.resolve(sslKeyPath) : null;
-    const resolvedCert = sslCertPath ? path.resolve(sslCertPath) : null;
+    const keyInBase = resolvedKey.startsWith(sslBasePath + path.sep) ||
+        resolvedKey === sslBasePath;
+    const certInBase = resolvedCert.startsWith(sslBasePath + path.sep) ||
+        resolvedCert === sslBasePath;
 
-    if (resolvedKey && resolvedCert &&
-        isPathWithinBase(resolvedKey, sslBasePath) &&
-        isPathWithinBase(resolvedCert, sslBasePath) &&
-        fs.existsSync(resolvedKey) &&
-        fs.existsSync(resolvedCert)) {
+    if (sslKeyRaw && sslCertRaw && keyInBase && certInBase &&
+        fs.existsSync(resolvedKey) && fs.existsSync(resolvedCert)) {
         const httpsOptions = {
             key: fs.readFileSync(resolvedKey),
             cert: fs.readFileSync(resolvedCert)
@@ -150,18 +144,14 @@ MongoClient.connect(db, (err, db) => {
             console.log(`Express https server listening on port ${port}`);
         });
     } else {
-        if (sslKeyPath || sslCertPath) {
+        if (sslKeyRaw || sslCertRaw) {
             console.warn(
-                "SSL paths invalid or outside allowed base directory," +
-                " falling back to HTTP"
+                "SSL paths missing, invalid, or outside allowed" +
+                " base — HTTPS unavailable"
             );
         }
-        console.warn(
-            "SSL certs not found, falling back to HTTP" +
-            " (set SSL_KEY_PATH and SSL_CERT_PATH for HTTPS)"
-        );
-        http.createServer(app).listen(port, () => {
-            console.log(`Express http server listening on port ${port}`);
+        app.listen(port, () => {
+            console.log(`Express server listening on port ${port}`);
         });
     }
 
