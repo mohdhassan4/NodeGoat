@@ -35,10 +35,8 @@ function validateTlsPath(filePath) {
     }
     // Split on both separators and reject any ".." segment in the raw input.
     var segments = filePath.split(/[/\\]/);
-    for (var i = 0; i < segments.length; i++) {
-        if (segments[i] === "..") {
-            throw new Error("TLS path contains traversal sequence: " + filePath);
-        }
+    if (segments.indexOf("..") !== -1) {
+        throw new Error("TLS path contains traversal sequence: " + filePath);
     }
     // Resolve against the project base and confirm the result stays within it.
     var safePath = path.join(allowedTlsBaseDir, filePath);
