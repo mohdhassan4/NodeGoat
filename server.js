@@ -9,7 +9,9 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -82,22 +84,18 @@ MongoClient.connect(db, (err, db) => {
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
         key: "sessionId",
         */
-
-        /*
         // Fix for A3 - XSS
-        // TODO: Add "maxAge"
         cookie: {
-            httpOnly: true
-            // Remember to start an HTTPS server to get this working
-            // secure: true
+            httpOnly: true,
+            secure: true,
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000)
         }
-        */
 
     }));
 
@@ -141,9 +139,22 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
+    // Secure HTTPS connection
+    const tlsOptions = {};
+    if (process.env.SSL_KEY_PATH && process.env.SSL_CERT_PATH) {
+        var sslKeyPath = path.resolve(process.env.SSL_KEY_PATH);
+        var sslCertPath = path.resolve(process.env.SSL_CERT_PATH);
+        if (!path.isAbsolute(sslKeyPath) || sslKeyPath !== path.normalize(sslKeyPath)) {
+            throw new Error("Invalid SSL key path");
+        }
+        if (!path.isAbsolute(sslCertPath) || sslCertPath !== path.normalize(sslCertPath)) {
+            throw new Error("Invalid SSL cert path");
+        }
+        tlsOptions.key = fs.readFileSync(sslKeyPath);
+        tlsOptions.cert = fs.readFileSync(sslCertPath);
+    }
+    https.createServer(tlsOptions, app).listen(port, () => {
+        console.log(`Express https server listening on port ${port}`);
     });
 
     /*
