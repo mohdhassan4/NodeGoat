@@ -82,7 +82,11 @@ MongoClient.connect(db, (err, db) => {
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            httpOnly: true,
+            domain: process.env.DOMAIN || "localhost"
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
