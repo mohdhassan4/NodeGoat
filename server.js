@@ -4,7 +4,7 @@ const express = require("express");
 const favicon = require("serve-favicon");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-// const csrf = require('csurf');
+const csrf = require("csurf");
 const consolidate = require("consolidate"); // Templating library adapter for Express
 const swig = require("swig");
 // const helmet = require("helmet");
@@ -82,7 +82,11 @@ MongoClient.connect(db, (err, db) => {
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            secure: process.env.NODE_ENV === "production",
+            maxAge: parseInt(process.env.SESSION_MAX_AGE, 10) || 7200000
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
@@ -101,7 +105,6 @@ MongoClient.connect(db, (err, db) => {
 
     }));
 
-    /*
     // Fix for A8 - CSRF
     // Enable Express csrf protection
     app.use(csrf());
@@ -110,7 +113,6 @@ MongoClient.connect(db, (err, db) => {
         res.locals.csrftoken = req.csrfToken();
         next();
     });
-    */
 
     // Register templating engine
     app.engine(".html", consolidate.swig);
@@ -141,17 +143,32 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-
-    /*
     // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    // Use secure HTTPS connection when TLS cert/key paths are provided
+    if (process.env.TLS_CERT_PATH && process.env.TLS_KEY_PATH) {
+        const https = require("https");
+        const fs = require("fs");
+        const path = require("path");
+        const certPath = path.resolve(process.env.TLS_CERT_PATH);
+        const keyPath = path.resolve(process.env.TLS_KEY_PATH);
+        if (!path.isAbsolute(certPath) || certPath.indexOf("..") !== -1) {
+            throw new Error("Invalid TLS_CERT_PATH: path traversal detected");
+        }
+        if (!path.isAbsolute(keyPath) || keyPath.indexOf("..") !== -1) {
+            throw new Error("Invalid TLS_KEY_PATH: path traversal detected");
+        }
+        const tlsOptions = {
+            cert: fs.readFileSync(certPath),
+            key: fs.readFileSync(keyPath)
+        };
+        https.createServer(tlsOptions, app).listen(port, () => {
+            console.log("Express https server listening on port " + port);
+        });
+    } else {
+        console.warn("TLS_CERT_PATH/TLS_KEY_PATH not set, falling back to HTTP");
+        http.createServer(app).listen(port, () => {
+            console.log("Express http server listening on port " + port);
+        });
+    }
 
 });
