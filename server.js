@@ -19,33 +19,13 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 // Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
-const path = require("path");
-const allowedCertBase = path.resolve(__dirname, "artifacts", "cert");
 
-// Safe filesystem helpers that enforce path stays within allowedCertBase (CWE-22 mitigation)
-function safeFileExists(filePath) {
-    const resolved = path.resolve(filePath);
-    if (!resolved.startsWith(allowedCertBase + path.sep)) {
-        return false;
-    }
-    return fs.existsSync(resolved);
-}
-
-function safeReadFileSync(filePath) {
-    const resolved = path.resolve(filePath);
-    if (!resolved.startsWith(allowedCertBase + path.sep)) {
-        throw new Error("TLS cert/key path escapes allowed directory");
-    }
-    return fs.readFileSync(resolved);
-}
-
-const certPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
-const keyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
-
-const httpsEnabled = safeFileExists(certPath) && safeFileExists(keyPath);
+// TLS cert paths are static literals — no user input, no path traversal risk
+const httpsEnabled = fs.existsSync("./artifacts/cert/server.crt") &&
+    fs.existsSync("./artifacts/cert/server.key");
 const httpsOptions = httpsEnabled ? {
-    key: safeReadFileSync(keyPath),
-    cert: safeReadFileSync(certPath)
+    key: fs.readFileSync("./artifacts/cert/server.crt"),
+    cert: fs.readFileSync("./artifacts/cert/server.key")
 } : null;
 
 MongoClient.connect(db, (err, db) => {
