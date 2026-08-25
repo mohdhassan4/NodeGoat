@@ -10,22 +10,22 @@ const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
+
 // Fix for A6-Sensitive Data Exposure
-// Load keys for establishing secure HTTPS connection
-const fs = require("fs");
-const https = require("https");
-const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
+// Load keys for establishing secure HTTPS connection if available
+const certPath = process.env.SSL_CERT_PATH ||
+    path.resolve(__dirname, "./artifacts/cert/server.crt");
+const keyPath = process.env.SSL_KEY_PATH ||
+    path.resolve(__dirname, "./artifacts/cert/server.key");
+const certsAvailable = fs.existsSync(certPath) && fs.existsSync(keyPath);
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -141,17 +141,21 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-
-    /*
     // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    // Use secure HTTPS protocol when certs are available, fall back to HTTP otherwise
+    if (certsAvailable) {
+        const httpsOptions = {
+            key: fs.readFileSync(keyPath),
+            cert: fs.readFileSync(certPath)
+        };
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        console.warn("SSL certificates not found. Falling back to HTTP.");
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port}`);
+        });
+    }
 
 });
