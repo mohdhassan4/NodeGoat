@@ -83,17 +83,13 @@ MongoClient.connect(db, (err, db) => {
         // Both mandatory in Express v4
         saveUninitialized: true,
         resave: true,
+        // Use generic cookie name to avoid fingerprinting the framework
+        name: "sessionId",
         cookie: {
             secure: true,
             domain: process.env.COOKIE_DOMAIN || "localhost",
             expires: new Date(Date.now() + 2 * 60 * 60 * 1000)
         }
-        /*
-        // Fix for A5 - Security MisConfig
-        // Use generic cookie name
-        key: "sessionId",
-        */
-
     }));
 
     /*
