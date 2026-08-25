@@ -10,6 +10,8 @@ const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
+const https = require("https");
+const fs = require("fs");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -142,17 +144,35 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
+    // Use HTTPS when SSL cert and key are available; fall back to HTTP only for development
+    const sslKeyPath = process.env.SSL_KEY_PATH;
+    const sslCertPath = process.env.SSL_CERT_PATH;
 
-    /*
-    // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    if (sslKeyPath && sslCertPath && fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
+        const httpsOptions = {
+            key: fs.readFileSync(sslKeyPath),
+            cert: fs.readFileSync(sslCertPath)
+        };
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+
+        // Redirect HTTP to HTTPS on a secondary port if HTTP_PORT is set
+        const httpPort = process.env.HTTP_PORT;
+        if (httpPort) {
+            const redirectApp = express();
+            redirectApp.use((req, res) => {
+                res.redirect(301, "https://" + req.headers.host.replace(":" + httpPort, ":" + port) + req.url);
+            });
+            http.createServer(redirectApp).listen(httpPort, () => {
+                console.log(`HTTP redirect server listening on port ${httpPort}`);
+            });
+        }
+    } else {
+        console.warn("SSL_KEY_PATH or SSL_CERT_PATH not set/found; starting insecure HTTP server (development only)");
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port}`);
+        });
+    }
 
 });
