@@ -5,10 +5,10 @@ const util = require("util");
 const finalEnv = process.env.NODE_ENV || "development";
 
 const envConfigs = {
-    "all": require(path.resolve(__dirname, "..", "config", "env", "all.js")),
-    "development": require(path.resolve(__dirname, "..", "config", "env", "development.js")),
-    "production": require(path.resolve(__dirname, "..", "config", "env", "production.js")),
-    "test": require(path.resolve(__dirname, "..", "config", "env", "test.js"))
+    "all": require("./env/all.js"),
+    "development": require("./env/development.js"),
+    "production": require("./env/production.js"),
+    "test": require("./env/test.js")
 };
 
 const allConf = envConfigs["all"];

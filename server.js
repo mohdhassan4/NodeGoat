@@ -142,33 +142,14 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol when SSL_KEY_PATH and SSL_CERT_PATH are set
-    // Validate SSL paths to prevent path traversal
-    var sslKeyPath = process.env.SSL_KEY_PATH ? path.resolve(process.env.SSL_KEY_PATH) : null;
-    var sslCertPath = process.env.SSL_CERT_PATH ? path.resolve(process.env.SSL_CERT_PATH) : null;
-    var projectRoot = path.resolve(__dirname);
+    // Use secure HTTPS protocol when cert files are at fixed paths
+    var sslKeyFile = path.join(__dirname, "artifacts", "cert", "server.key");
+    var sslCertFile = path.join(__dirname, "artifacts", "cert", "server.crt");
 
-    function isValidSslPath(resolvedPath) {
-        if (!resolvedPath) {
-            return false;
-        }
-        // Ensure no traversal sequences remain after resolution
-        var normalized = path.normalize(resolvedPath);
-        if (normalized.indexOf("..") !== -1) {
-            return false;
-        }
-        // Ensure path is absolute and within project root or /etc/ssl
-        if (normalized.startsWith(projectRoot) || normalized.startsWith("/etc/ssl")) {
-            return true;
-        }
-        return false;
-    }
-
-    if (isValidSslPath(sslKeyPath) && isValidSslPath(sslCertPath) &&
-        fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
+    if (fs.existsSync(sslKeyFile) && fs.existsSync(sslCertFile)) {
         const httpsOptions = {
-            key: fs.readFileSync(sslKeyPath),
-            cert: fs.readFileSync(sslCertPath)
+            key: fs.readFileSync(sslKeyFile),
+            cert: fs.readFileSync(sslCertFile)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
