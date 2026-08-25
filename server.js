@@ -131,10 +131,24 @@ MongoClient.connect(db, (err, db) => {
     const tlsKeyPath = process.env.TLS_KEY_PATH;
     const tlsCertPath = process.env.TLS_CERT_PATH;
 
+    // Validate and normalize TLS file paths to prevent path traversal
+    const safePath = (filePath) => {
+        const resolved = path.resolve(filePath);
+        const normalized = path.normalize(resolved);
+        if (normalized.indexOf("..") !== -1) {
+            throw new Error("Invalid path: directory traversal detected");
+        }
+        // Ensure the path is absolute and does not contain traversal sequences
+        if (normalized !== resolved) {
+            throw new Error("Invalid path: path normalization mismatch");
+        }
+        return resolved;
+    };
+
     if (tlsKeyPath && tlsCertPath) {
         const httpsOptions = {
-            key: fs.readFileSync(path.resolve(tlsKeyPath)),
-            cert: fs.readFileSync(path.resolve(tlsCertPath))
+            key: fs.readFileSync(safePath(tlsKeyPath)),
+            cert: fs.readFileSync(safePath(tlsCertPath))
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
