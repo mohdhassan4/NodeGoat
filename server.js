@@ -19,13 +19,12 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 // Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
-const path = require("path");
-const httpsEnabled = fs.existsSync(__dirname + "/artifacts/cert/server.key") && fs.existsSync(__dirname + "/artifacts/cert/server.crt");
+const httpsEnabled = fs.existsSync("./artifacts/cert/server.key") && fs.existsSync("./artifacts/cert/server.crt");
 let httpsOptions = {};
 if (httpsEnabled) {
     httpsOptions = {
-        key: fs.readFileSync(__dirname + "/artifacts/cert/server.key"),
-        cert: fs.readFileSync(__dirname + "/artifacts/cert/server.crt")
+        key: fs.readFileSync("./artifacts/cert/server.key"),
+        cert: fs.readFileSync("./artifacts/cert/server.crt")
     };
 }
 
