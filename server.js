@@ -89,7 +89,8 @@ MongoClient.connect(db, (err, db) => {
         cookie: {
             httpOnly: true,
             secure: true,
-            domain: cookieDomain
+            domain: cookieDomain,
+            path: "/"
         }
 
     }));
