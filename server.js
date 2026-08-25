@@ -134,20 +134,18 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Require HTTPS — refuse to start without TLS certificates
-    const keyPath = path.resolve(__dirname, "artifacts", "cert", "server.key");
-    const certPath = path.resolve(__dirname, "artifacts", "cert", "server.crt");
-    if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+    if (!fs.existsSync(path.resolve(__dirname, "artifacts", "cert", "server.key")) ||
+        !fs.existsSync(path.resolve(__dirname, "artifacts", "cert", "server.crt"))) {
         console.error(
             "TLS certificate files not found. " +
             "Server requires artifacts/cert/server.key and artifacts/cert/server.crt"
         );
         process.exit(1);
     }
-    const httpsOptions = {
-        key: fs.readFileSync(keyPath),
-        cert: fs.readFileSync(certPath)
-    };
-    https.createServer(httpsOptions, app).listen(port, () => {
+    https.createServer({
+        key: fs.readFileSync(path.resolve(__dirname, "artifacts", "cert", "server.key")),
+        cert: fs.readFileSync(path.resolve(__dirname, "artifacts", "cert", "server.crt"))
+    }, app).listen(port, () => {
         console.log(`Express https server listening on port ${port}`);
     });
 
