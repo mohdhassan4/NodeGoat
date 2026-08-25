@@ -129,20 +129,21 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Use HTTPS when TLS certificate and key files exist in the certs directory
-    var certFile = path.join(__dirname, "certs", "server.crt");
-    var keyFile = path.join(__dirname, "certs", "server.key");
+    var certsDir = path.join(__dirname, "certs");
+    var hasCerts = fs.existsSync(path.join(certsDir, "server.crt")) &&
+                   fs.existsSync(path.join(certsDir, "server.key"));
 
-    if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
+    if (hasCerts) {
         var httpsOptions = {
-            cert: fs.readFileSync(certFile),
-            key: fs.readFileSync(keyFile)
+            cert: fs.readFileSync(path.join(__dirname, "certs", "server.crt")),
+            key: fs.readFileSync(path.join(__dirname, "certs", "server.key"))
         };
         https.createServer(httpsOptions, app).listen(port, () => {
-            console.log(`Express https server listening on port ${port}`);
+            console.log("Express https server listening on port " + port);
         });
     } else {
         app.listen(port, () => {
-            console.log(`Express server listening on port ${port}`);
+            console.log("Express server listening on port " + port);
         });
     }
 
