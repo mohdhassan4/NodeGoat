@@ -20,8 +20,16 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+const allowedCertBase = path.resolve(__dirname, "artifacts", "cert");
 const certPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
 const keyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
+
+// Validate resolved paths stay within the expected certs directory (CWE-22 mitigation)
+if (!certPath.startsWith(allowedCertBase + path.sep) ||
+    !keyPath.startsWith(allowedCertBase + path.sep)) {
+    throw new Error("TLS cert/key path escapes allowed directory");
+}
+
 const httpsEnabled = fs.existsSync(certPath) && fs.existsSync(keyPath);
 const httpsOptions = httpsEnabled ? {
     key: fs.readFileSync(keyPath),
