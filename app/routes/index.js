@@ -70,7 +70,9 @@ const index = (app, db) => {
     app.get("/learn", isLoggedIn, (req, res) => {
         const url = req.query.url;
         if (url && url.startsWith("/") && !url.startsWith("//")) {
-            return res.redirect(url);
+            const parsed = new URL(url, "http://localhost");
+            const safePath = parsed.pathname;
+            return res.redirect(safePath);
         }
         return res.redirect("/");
     });
