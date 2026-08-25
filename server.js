@@ -148,9 +148,18 @@ MongoClient.connect(db, (err, db) => {
     if (process.env.TLS_CERT_PATH && process.env.TLS_KEY_PATH) {
         const https = require("https");
         const fs = require("fs");
+        const path = require("path");
+        const certPath = path.resolve(process.env.TLS_CERT_PATH);
+        const keyPath = path.resolve(process.env.TLS_KEY_PATH);
+        if (!path.isAbsolute(certPath) || certPath.indexOf("..") !== -1) {
+            throw new Error("Invalid TLS_CERT_PATH: path traversal detected");
+        }
+        if (!path.isAbsolute(keyPath) || keyPath.indexOf("..") !== -1) {
+            throw new Error("Invalid TLS_KEY_PATH: path traversal detected");
+        }
         const tlsOptions = {
-            cert: fs.readFileSync(process.env.TLS_CERT_PATH),
-            key: fs.readFileSync(process.env.TLS_KEY_PATH)
+            cert: fs.readFileSync(certPath),
+            key: fs.readFileSync(keyPath)
         };
         https.createServer(tlsOptions, app).listen(port, () => {
             console.log("Express https server listening on port " + port);
