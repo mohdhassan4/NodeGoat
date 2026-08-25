@@ -4,7 +4,7 @@ const express = require("express");
 const favicon = require("serve-favicon");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-// const csrf = require('csurf');
+const csrf = require("csurf");
 const consolidate = require("consolidate"); // Templating library adapter for Express
 const swig = require("swig");
 // const helmet = require("helmet");
@@ -21,9 +21,27 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+
+const tlsCertBaseDir = path.resolve(process.env.TLS_CERT_BASE_DIR || __dirname);
+const keyPath = path.resolve(
+    tlsCertBaseDir,
+    process.env.NODE_TLS_KEY || "./artifacts/cert/server.key"
+);
+const certPath = path.resolve(
+    tlsCertBaseDir,
+    process.env.NODE_TLS_CERT || "./artifacts/cert/server.crt"
+);
+
+if (!keyPath.startsWith(tlsCertBaseDir + path.sep) && keyPath !== tlsCertBaseDir) {
+    throw new Error("TLS key path escapes the allowed base directory");
+}
+if (!certPath.startsWith(tlsCertBaseDir + path.sep) && certPath !== tlsCertBaseDir) {
+    throw new Error("TLS cert path escapes the allowed base directory");
+}
+
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath)
 };
 */
 
@@ -79,10 +97,16 @@ MongoClient.connect(db, (err, db) => {
         // genid: (req) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
+        name: "sessionId",
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            httpOnly: true,
+            path: "/",
+            domain: process.env.SESSION_COOKIE_DOMAIN || undefined
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
@@ -101,7 +125,6 @@ MongoClient.connect(db, (err, db) => {
 
     }));
 
-    /*
     // Fix for A8 - CSRF
     // Enable Express csrf protection
     app.use(csrf());
@@ -110,7 +133,6 @@ MongoClient.connect(db, (err, db) => {
         res.locals.csrftoken = req.csrfToken();
         next();
     });
-    */
 
     // Register templating engine
     app.engine(".html", consolidate.swig);
@@ -141,7 +163,19 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
+    // Guard against insecure HTTP in production
+    if (process.env.NODE_ENV === "production") {
+        console.error(
+            "ERROR: HTTP is not allowed in production. " +
+            "Configure HTTPS certificates and enable the https server."
+        );
+        process.exit(1);
+    }
+
+    console.warn(
+        "WARNING: Starting server over insecure HTTP. " +
+        "Do not use this in production. Configure HTTPS for secure transport."
+    );
     http.createServer(app).listen(port, () => {
         console.log(`Express http server listening on port ${port}`);
     });
