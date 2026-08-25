@@ -21,21 +21,15 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 
-// Resolve and validate TLS paths to prevent path traversal
-const tlsBasePath = path.resolve(__dirname, "artifacts", "cert");
-const tlsKeyPath = path.normalize(path.resolve(tlsBasePath, "server.key"));
-const tlsCertPath = path.normalize(path.resolve(tlsBasePath, "server.crt"));
-
 let httpsOptions = null;
 
-if (tlsKeyPath.startsWith(tlsBasePath + path.sep) && tlsCertPath.startsWith(tlsBasePath + path.sep)) {
-    if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
-        httpsOptions = {
-            key: fs.readFileSync(tlsKeyPath),
-            cert: fs.readFileSync(tlsCertPath),
-            minVersion: "TLSv1.2"
-        };
-    }
+if (fs.existsSync(path.resolve(__dirname, "artifacts/cert/server.key")) &&
+    fs.existsSync(path.resolve(__dirname, "artifacts/cert/server.crt"))) {
+    httpsOptions = {
+        key: fs.readFileSync(path.resolve(__dirname, "artifacts/cert/server.key")),
+        cert: fs.readFileSync(path.resolve(__dirname, "artifacts/cert/server.crt")),
+        minVersion: "TLSv1.2"
+    };
 }
 
 MongoClient.connect(db, (err, db) => {
@@ -97,9 +91,11 @@ MongoClient.connect(db, (err, db) => {
         resave: true,
         cookie: {
             path: "/",
-            secure: process.env.NODE_ENV === "production",
+            httpOnly: true,
+            secure: true,
             domain: process.env.APP_DOMAIN,
-            maxAge: 2 * 60 * 60 * 1000
+            maxAge: 2 * 60 * 60 * 1000,
+            expires: new Date(Date.now() + 2 * 60 * 60 * 1000)
         }
         /*
         // Fix for A5 - Security MisConfig
