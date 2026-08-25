@@ -21,9 +21,15 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+const certDir = path.normalize(path.join(__dirname, "artifacts", "cert"));
+const keyPath = path.normalize(path.join(certDir, "server.key"));
+const certPath = path.normalize(path.join(certDir, "server.crt"));
+if (!keyPath.startsWith(certDir) || !certPath.startsWith(certDir)) {
+    throw new Error("Invalid certificate path");
+}
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath)
 };
 */
 
