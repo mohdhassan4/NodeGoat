@@ -23,7 +23,12 @@ const tlsBaseDir = path.resolve(
     process.env.TLS_BASE_DIR || path.join(__dirname, "artifacts", "cert")
 );
 
-function validateTlsFilePath(filePath, baseDir) {
+function loadTlsFile(filePath, baseDir) {
+    if (filePath.indexOf("..") !== -1) {
+        throw new Error(
+            "TLS file path contains traversal sequence: " + filePath
+        );
+    }
     var resolvedPath = path.isAbsolute(filePath)
         ? path.normalize(filePath)
         : path.resolve(baseDir, filePath);
@@ -33,7 +38,10 @@ function validateTlsFilePath(filePath, baseDir) {
             "TLS file path outside allowed directory: " + resolvedPath
         );
     }
-    return resolvedPath;
+    if (!fs.existsSync(resolvedPath)) {
+        return null;
+    }
+    return fs.readFileSync(resolvedPath);
 }
 
 MongoClient.connect(db, (err, db) => {
@@ -162,9 +170,10 @@ MongoClient.connect(db, (err, db) => {
     const tlsKeyPathRaw = process.env.TLS_KEY_PATH ||
         path.resolve(__dirname, "./artifacts/cert/server.key");
 
+    var tlsCertData, tlsKeyData;
     try {
-        var tlsCertPath = validateTlsFilePath(tlsCertPathRaw, tlsBaseDir);
-        var tlsKeyPath = validateTlsFilePath(tlsKeyPathRaw, tlsBaseDir);
+        tlsCertData = loadTlsFile(tlsCertPathRaw, tlsBaseDir);
+        tlsKeyData = loadTlsFile(tlsKeyPathRaw, tlsBaseDir);
     } catch (pathErr) {
         console.error("TLS path validation failed: " + pathErr.message);
         if (process.env.ALLOW_HTTP === "true") {
@@ -182,10 +191,10 @@ MongoClient.connect(db, (err, db) => {
         return;
     }
 
-    if (fs.existsSync(tlsCertPath) && fs.existsSync(tlsKeyPath)) {
-        const httpsOptions = {
-            key: fs.readFileSync(tlsKeyPath),
-            cert: fs.readFileSync(tlsCertPath)
+    if (tlsCertData && tlsKeyData) {
+        var httpsOptions = {
+            key: tlsKeyData,
+            cert: tlsCertData
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
