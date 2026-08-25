@@ -33,10 +33,12 @@ function isWithinBaseDir(filePath) {
 
 var httpsOptions = null;
 if (isWithinBaseDir(tlsKeyPath) && isWithinBaseDir(tlsCertPath)) {
-    if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
+    const safeTlsKeyPath = path.resolve(tlsKeyPath);
+    const safeTlsCertPath = path.resolve(tlsCertPath);
+    if (fs.existsSync(safeTlsKeyPath) && fs.existsSync(safeTlsCertPath)) {
         httpsOptions = {
-            key: fs.readFileSync(tlsKeyPath),
-            cert: fs.readFileSync(tlsCertPath)
+            key: fs.readFileSync(safeTlsKeyPath),
+            cert: fs.readFileSync(safeTlsCertPath)
         };
     }
 } else {
@@ -154,10 +156,15 @@ MongoClient.connect(db, (err, db) => {
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
         });
+    } else if (process.env.NODE_ENV === "production") {
+        // In production, refuse to start without TLS - enforce HTTPS-only
+        console.error("FATAL: TLS certificates not available. HTTPS is required in production.");
+        console.error("Set TLS_KEY_PATH and TLS_CERT_PATH to valid certificate files.");
+        process.exit(1);
     } else {
-        // Fallback to HTTP when TLS certs are not available
+        // Fallback to HTTP only in non-production environments (local development)
         http.createServer(app).listen(port, () => {
-            console.log(`Express http server listening on port ${port}`);
+            console.log(`Express http server listening on port ${port} (non-production, HTTP only)`);
         });
     }
 
