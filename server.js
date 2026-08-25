@@ -20,8 +20,20 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const tlsKeyPath = process.env.TLS_KEY_PATH || path.resolve(__dirname, "./artifacts/cert/server.key");
-const tlsCertPath = process.env.TLS_CERT_PATH || path.resolve(__dirname, "./artifacts/cert/server.crt");
+const baseDir = path.resolve(__dirname);
+
+function safeTlsPath(envValue, fallbackRelative) {
+    var resolved = envValue
+        ? path.normalize(path.resolve(baseDir, envValue))
+        : path.normalize(path.resolve(__dirname, fallbackRelative));
+    if (!resolved.startsWith(baseDir + path.sep) && resolved !== baseDir) {
+        return null;
+    }
+    return resolved;
+}
+
+const tlsKeyPath = safeTlsPath(process.env.TLS_KEY_PATH, "./artifacts/cert/server.key");
+const tlsCertPath = safeTlsPath(process.env.TLS_CERT_PATH, "./artifacts/cert/server.crt");
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -75,20 +87,18 @@ MongoClient.connect(db, (err, db) => {
         // genid: (req) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
+        name: "__session",
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
         resave: true,
         cookie: {
             httpOnly: true,
-            expires: new Date(Date.now() + 2 * 60 * 60 * 1000)
+            secure: true,
+            path: "/",
+            expires: new Date(Date.now() + 2 * 60 * 60 * 1000),
+            domain: process.env.SESSION_COOKIE_DOMAIN || undefined
         }
-        /*
-        // Fix for A5 - Security MisConfig
-        // Use generic cookie name
-        key: "sessionId",
-        */
-
     }));
 
     /*
@@ -132,7 +142,7 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Use secure HTTPS protocol when TLS certificates are available
-    if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
+    if (tlsKeyPath && tlsCertPath && fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
         const httpsOptions = {
             key: fs.readFileSync(tlsKeyPath),
             cert: fs.readFileSync(tlsCertPath)
@@ -141,7 +151,11 @@ MongoClient.connect(db, (err, db) => {
             console.log(`Express https server listening on port ${port}`);
         });
     } else {
-        console.warn("TLS certificates not found. Falling back to HTTP. Set TLS_KEY_PATH and TLS_CERT_PATH for HTTPS.");
+        if (!tlsKeyPath || !tlsCertPath) {
+            console.warn("TLS path rejected: resolved outside base directory. Falling back to HTTP.");
+        } else {
+            console.warn("TLS certificates not found. Falling back to HTTP. Set TLS_KEY_PATH and TLS_CERT_PATH for HTTPS.");
+        }
         http.createServer(app).listen(port, () => {
             console.log(`Express http server listening on port ${port}`);
         });
