@@ -11,6 +11,7 @@ const swig = require("swig");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const https = require("https");
 const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -136,10 +137,27 @@ MongoClient.connect(db, (err, db) => {
     const tlsKeyPath = process.env.TLS_KEY_PATH;
     const tlsCertPath = process.env.TLS_CERT_PATH;
 
-    if (tlsKeyPath && tlsCertPath && fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
+    let resolvedKeyPath = null;
+    let resolvedCertPath = null;
+
+    if (tlsKeyPath && tlsCertPath) {
+        resolvedKeyPath = path.resolve(tlsKeyPath);
+        resolvedCertPath = path.resolve(tlsCertPath);
+
+        // Validate resolved paths are absolute and do not traverse outside the filesystem root
+        if (!resolvedKeyPath.startsWith("/") || resolvedKeyPath.includes("\0")) {
+            resolvedKeyPath = null;
+        }
+        if (!resolvedCertPath.startsWith("/") || resolvedCertPath.includes("\0")) {
+            resolvedCertPath = null;
+        }
+    }
+
+    if (resolvedKeyPath && resolvedCertPath
+        && fs.existsSync(resolvedKeyPath) && fs.existsSync(resolvedCertPath)) {
         const httpsOptions = {
-            key: fs.readFileSync(tlsKeyPath),
-            cert: fs.readFileSync(tlsCertPath)
+            key: fs.readFileSync(resolvedKeyPath),
+            cert: fs.readFileSync(resolvedCertPath)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
