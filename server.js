@@ -138,10 +138,24 @@ MongoClient.connect(db, (err, db) => {
     const tlsKeyPath = process.env.TLS_KEY_PATH || process.env.HTTPS_KEY;
     const tlsCertPath = process.env.TLS_CERT_PATH || process.env.HTTPS_CERT;
 
+    const validTlsExtensions = [".pem", ".crt", ".key", ".cert"];
+    const validateTlsPath = function(filePath) {
+        var resolved = path.resolve(filePath);
+        var ext = path.extname(resolved).toLowerCase();
+        if (validTlsExtensions.indexOf(ext) === -1) {
+            throw new Error("Invalid TLS file extension: " + ext);
+        }
+        var stat = fs.statSync(resolved);
+        if (!stat.isFile()) {
+            throw new Error("TLS path is not a regular file: " + resolved);
+        }
+        return resolved;
+    };
+
     if (tlsKeyPath && tlsCertPath) {
         const httpsOptions = {
-            key: fs.readFileSync(path.resolve(tlsKeyPath)),
-            cert: fs.readFileSync(path.resolve(tlsCertPath))
+            key: fs.readFileSync(validateTlsPath(tlsKeyPath)),
+            cert: fs.readFileSync(validateTlsPath(tlsCertPath))
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
