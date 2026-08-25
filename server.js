@@ -20,14 +20,20 @@ const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
 
 // Load TLS certificates for secure HTTPS connection if available
+const certDir = path.resolve(__dirname, "artifacts", "cert");
 const certPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
 const keyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
 let httpsOptions = null;
-if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-    httpsOptions = {
-        key: fs.readFileSync(keyPath),
-        cert: fs.readFileSync(certPath)
-    };
+// Validate resolved paths are within the expected certificate directory (prevent path traversal)
+if (certPath.startsWith(certDir + path.sep) && keyPath.startsWith(certDir + path.sep)) {
+    if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+        httpsOptions = {
+            key: fs.readFileSync(keyPath),
+            cert: fs.readFileSync(certPath)
+        };
+    }
+} else {
+    console.error("Certificate paths must be within the application certificate directory");
 }
 
 MongoClient.connect(db, (err, db) => {
