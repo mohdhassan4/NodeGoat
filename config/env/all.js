@@ -6,6 +6,7 @@ module.exports = {
     port,
     db,
     cookieSecret: "session_cookie_secret_key_here",
+    cookieDomain: process.env.COOKIE_DOMAIN || "localhost",
     cryptoKey: "a_secure_key_for_crypto_here",
     cryptoAlgo: "aes256",
     hostName: "localhost",
