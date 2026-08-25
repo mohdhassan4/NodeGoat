@@ -32,7 +32,8 @@ if (tlsKeyPath.startsWith(tlsBasePath + path.sep) && tlsCertPath.startsWith(tlsB
     if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
         httpsOptions = {
             key: fs.readFileSync(tlsKeyPath),
-            cert: fs.readFileSync(tlsCertPath)
+            cert: fs.readFileSync(tlsCertPath),
+            minVersion: "TLSv1.2"
         };
     }
 }
