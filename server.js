@@ -17,7 +17,7 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-// TLS certificates are loaded from environment variables TLS_KEY_PATH and TLS_CERT_PATH at server start
+// TLS certificates are loaded from local artifacts directory when available
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -122,25 +122,19 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Use HTTPS when TLS certificate paths are provided via environment variables
-    if (process.env.TLS_KEY_PATH && process.env.TLS_CERT_PATH) {
-        var path = require("path");
-        var keyPath = path.resolve(process.env.TLS_KEY_PATH);
-        var certPath = path.resolve(process.env.TLS_CERT_PATH);
+    // Use HTTPS when local TLS certificate artifacts are available
+    if (fs.existsSync("./artifacts/cert/server.key") && fs.existsSync("./artifacts/cert/server.crt")) {
         var httpsOptions = {
-            key: fs.readFileSync(keyPath),
-            cert: fs.readFileSync(certPath)
+            key: fs.readFileSync("./artifacts/cert/server.key"),
+            cert: fs.readFileSync("./artifacts/cert/server.crt")
         };
         https.createServer(httpsOptions, app).listen(port, () => {
-            console.log(`Express https server listening on port ${port}`);
-        });
-    } else if (process.env.NODE_ENV !== "production") {
-        // Fallback to HTTP only in non-production environments
-        http.createServer(app).listen(port, () => {
-            console.log(`Express http server listening on port ${port} (development only)`);
+            console.log("Express https server listening on port " + port);
         });
     } else {
-        throw new Error("TLS_KEY_PATH and TLS_CERT_PATH must be set in production");
+        http.createServer(app).listen(port, () => {
+            console.log("Express http server listening on port " + port);
+        });
     }
 
 });
