@@ -12,6 +12,7 @@ const MongoClient = require("mongodb").MongoClient; // Driver for connecting to 
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -149,9 +150,21 @@ MongoClient.connect(db, (err, db) => {
     const sslCertPath = process.env.SSL_CERT_PATH;
 
     if (sslKeyPath && sslCertPath && fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
+        // Validate SSL file paths to prevent path traversal
+        const sslBaseDir = path.resolve(process.env.SSL_BASE_DIR || __dirname);
+        const resolvedKey = path.resolve(sslBaseDir, sslKeyPath);
+        const resolvedCert = path.resolve(sslBaseDir, sslCertPath);
+
+        if (!resolvedKey.startsWith(sslBaseDir + path.sep) && resolvedKey !== sslBaseDir) {
+            throw new Error("SSL_KEY_PATH resolves outside allowed directory");
+        }
+        if (!resolvedCert.startsWith(sslBaseDir + path.sep) && resolvedCert !== sslBaseDir) {
+            throw new Error("SSL_CERT_PATH resolves outside allowed directory");
+        }
+
         const httpsOptions = {
-            key: fs.readFileSync(sslKeyPath),
-            cert: fs.readFileSync(sslCertPath)
+            key: fs.readFileSync(resolvedKey),
+            cert: fs.readFileSync(resolvedCert)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
