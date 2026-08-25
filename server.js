@@ -128,27 +128,17 @@ MongoClient.connect(db, (err, db) => {
 
     // Fix for A6-Sensitive Data Exposure
     // Use secure HTTPS protocol when TLS credentials are available
-    const tlsKeyPath = process.env.TLS_KEY_PATH;
-    const tlsCertPath = process.env.TLS_CERT_PATH;
+    // path.basename strips directory components to prevent path traversal (CWE-22)
+    var TLS_DIR = "/etc/ssl";
+    var tlsKeyFile = path.basename(process.env.TLS_KEY_PATH || "");
+    var tlsCertFile = path.basename(process.env.TLS_CERT_PATH || "");
 
-    // Validate and normalize TLS file paths to prevent path traversal
-    const safePath = (filePath) => {
-        const resolved = path.resolve(filePath);
-        const normalized = path.normalize(resolved);
-        if (normalized.indexOf("..") !== -1) {
-            throw new Error("Invalid path: directory traversal detected");
-        }
-        // Ensure the path is absolute and does not contain traversal sequences
-        if (normalized !== resolved) {
-            throw new Error("Invalid path: path normalization mismatch");
-        }
-        return resolved;
-    };
-
-    if (tlsKeyPath && tlsCertPath) {
+    if (tlsKeyFile && tlsCertFile) {
+        var keyFullPath = path.join(TLS_DIR, tlsKeyFile);
+        var certFullPath = path.join(TLS_DIR, tlsCertFile);
         const httpsOptions = {
-            key: fs.readFileSync(safePath(tlsKeyPath)),
-            cert: fs.readFileSync(safePath(tlsCertPath))
+            key: fs.readFileSync(keyFullPath),
+            cert: fs.readFileSync(certFullPath)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
