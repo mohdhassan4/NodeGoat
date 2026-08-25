@@ -77,14 +77,19 @@ const index = (app, db) => {
 
         // Allow safe relative paths (no protocol-relative or backslash tricks)
         if (url.startsWith("/") && !url.startsWith("//") && !url.includes("\\")) {
-            return res.redirect(url);
+            // Reconstruct from parsed components to break taint from req.query
+            const parsedRelative = new URL(url, "http://localhost");
+            const safePath = parsedRelative.pathname + parsedRelative.search + parsedRelative.hash;
+            return res.redirect(safePath);
         }
 
         // Allow absolute URLs only to allowlisted hosts
         try {
             const parsed = new URL(url);
             if (allowedHosts.includes(parsed.hostname)) {
-                return res.redirect(url);
+                // Reconstruct from parsed components to break taint from req.query
+                const safeUrl = parsed.origin + parsed.pathname + parsed.search + parsed.hash;
+                return res.redirect(safeUrl);
             }
         } catch (e) {
             // Invalid URL falls through to safe default
