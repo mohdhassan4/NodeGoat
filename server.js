@@ -124,18 +124,23 @@ MongoClient.connect(db, (err, db) => {
 
     // Use HTTPS when TLS certificate paths are provided via environment variables
     if (process.env.TLS_KEY_PATH && process.env.TLS_CERT_PATH) {
+        var path = require("path");
+        var keyPath = path.resolve(process.env.TLS_KEY_PATH);
+        var certPath = path.resolve(process.env.TLS_CERT_PATH);
         var httpsOptions = {
-            key: fs.readFileSync(process.env.TLS_KEY_PATH),
-            cert: fs.readFileSync(process.env.TLS_CERT_PATH)
+            key: fs.readFileSync(keyPath),
+            cert: fs.readFileSync(certPath)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
         });
-    } else {
-        // Fallback to HTTP when no TLS certificates are configured (development only)
+    } else if (process.env.NODE_ENV !== "production") {
+        // Fallback to HTTP only in non-production environments
         http.createServer(app).listen(port, () => {
-            console.log(`Express http server listening on port ${port}`);
+            console.log(`Express http server listening on port ${port} (development only)`);
         });
+    } else {
+        throw new Error("TLS_KEY_PATH and TLS_CERT_PATH must be set in production");
     }
 
 });
