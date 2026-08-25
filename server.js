@@ -15,17 +15,9 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
-// Fix for A6-Sensitive Data Exposure
-// Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -130,17 +122,23 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
+    // Load TLS material from environment or default file paths
+    const tlsKeyPath = process.env.TLS_KEY_PATH
+        || path.resolve(__dirname, "./artifacts/cert/server.key");
+    const tlsCertPath = process.env.TLS_CERT_PATH
+        || path.resolve(__dirname, "./artifacts/cert/server.crt");
 
-    /*
-    // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    const tlsKey = fs.existsSync(tlsKeyPath) ? fs.readFileSync(tlsKeyPath) : null;
+    const tlsCert = fs.existsSync(tlsCertPath) ? fs.readFileSync(tlsCertPath) : null;
+
+    if (tlsKey && tlsCert) {
+        https.createServer({ key: tlsKey, cert: tlsCert }, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port} (TLS not configured)`);
+        });
+    }
 
 });
