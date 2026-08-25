@@ -78,7 +78,8 @@ MongoClient.connect(db, (err, db) => {
         name: "sessionId",
         cookie: {
             domain: process.env.COOKIE_DOMAIN || "localhost",
-            httpOnly: true
+            httpOnly: true,
+            path: "/"
         }
         /*
         // Fix for A5 - Security MisConfig
