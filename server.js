@@ -9,7 +9,7 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
+// http module removed — server requires TLS certificates
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -138,10 +138,8 @@ MongoClient.connect(db, (err, db) => {
             console.log("Express https server listening on port " + port);
         });
     } else {
-        console.warn("TLS certificates not found at artifacts/cert/. Falling back to HTTP.");
-        http.createServer(app).listen(port, function() {
-            console.log("Express http server listening on port " + port);
-        });
+        console.error("TLS certificates not found at ./artifacts/cert/server.key and ./artifacts/cert/server.crt. HTTPS is required.");
+        process.exit(1);
     }
 
 });
