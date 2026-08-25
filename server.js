@@ -18,21 +18,6 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const certFiles = {
-    "server.key": path.resolve(__dirname, "artifacts", "cert", "server.key"),
-    "server.crt": path.resolve(__dirname, "artifacts", "cert", "server.crt")
-};
-
-function readCertFile(name) {
-    var resolved = certFiles[name];
-    if (!resolved) {
-        throw new Error("Unknown certificate file: only server.key and server.crt are allowed");
-    }
-    if (!fs.existsSync(resolved)) {
-        throw new Error("Certificate file not found: " + name);
-    }
-    return fs.readFileSync(resolved);
-}
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -149,19 +134,21 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Require HTTPS — refuse to start without TLS certificates
-    // readCertFile uses a strict allowlist of certificate file paths
-    try {
-        const httpsOptions = {
-            key: readCertFile("server.key"),
-            cert: readCertFile("server.crt")
-        };
-        https.createServer(httpsOptions, app).listen(port, () => {
-            console.log(`Express https server listening on port ${port}`);
-        });
-    } catch (certErr) {
-        console.error("TLS certificates not found. Server requires HTTPS to start.");
-        console.error(certErr.message);
+    const keyPath = path.resolve(__dirname, "artifacts", "cert", "server.key");
+    const certPath = path.resolve(__dirname, "artifacts", "cert", "server.crt");
+    if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+        console.error(
+            "TLS certificate files not found. " +
+            "Server requires artifacts/cert/server.key and artifacts/cert/server.crt"
+        );
         process.exit(1);
     }
+    const httpsOptions = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath)
+    };
+    https.createServer(httpsOptions, app).listen(port, () => {
+        console.log(`Express https server listening on port ${port}`);
+    });
 
 });
