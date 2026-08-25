@@ -15,17 +15,35 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
 // Fix for A6-Sensitive Data Exposure
 // Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
+
+// Validate cert paths to prevent path traversal
+const certsBaseDir = path.resolve(__dirname, "artifacts", "cert");
+const keyFile = process.env.SSL_KEY_FILE || "server.key";
+const certFile = process.env.SSL_CERT_FILE || "server.crt";
+const keyPath = path.normalize(path.resolve(certsBaseDir, keyFile));
+const certPath = path.normalize(path.resolve(certsBaseDir, certFile));
+
+let httpsOptions = null;
+if (
+    keyPath.startsWith(certsBaseDir + path.sep) &&
+    certPath.startsWith(certsBaseDir + path.sep)
+) {
+    if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+        httpsOptions = {
+            key: fs.readFileSync(keyPath),
+            cert: fs.readFileSync(certPath)
+        };
+    }
+} else {
+    console.error(
+        "Certificate paths resolve outside the allowed directory"
+    );
+}
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -149,12 +167,15 @@ MongoClient.connect(db, (err, db) => {
         console.log(`Express http server listening on port ${port}`);
     });
 
-    /*
     // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    // Use secure HTTPS protocol if valid certs are available
+    if (httpsOptions) {
+        const httpsPort = process.env.HTTPS_PORT || 4443;
+        https.createServer(httpsOptions, app).listen(httpsPort, () => {
+            console.log(
+                `Express https server listening on port ${httpsPort}`
+            );
+        });
+    }
 
 });
