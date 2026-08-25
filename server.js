@@ -130,9 +130,18 @@ MongoClient.connect(db, (err, db) => {
     var tlsCertPath = process.env.TLS_CERT_PATH;
     var tlsKeyPath = process.env.TLS_KEY_PATH;
     if (tlsCertPath && tlsKeyPath) {
+        var resolvedCertPath = path.resolve(__dirname, tlsCertPath);
+        var resolvedKeyPath = path.resolve(__dirname, tlsKeyPath);
+        // Prevent path traversal: ensure resolved paths remain within the application directory
+        if (!resolvedCertPath.startsWith(__dirname + path.sep) && resolvedCertPath !== __dirname) {
+            throw new Error("TLS_CERT_PATH must not traverse outside the application directory");
+        }
+        if (!resolvedKeyPath.startsWith(__dirname + path.sep) && resolvedKeyPath !== __dirname) {
+            throw new Error("TLS_KEY_PATH must not traverse outside the application directory");
+        }
         var httpsOptions = {
-            cert: fs.readFileSync(path.resolve(__dirname, tlsCertPath)),
-            key: fs.readFileSync(path.resolve(__dirname, tlsKeyPath))
+            cert: fs.readFileSync(resolvedCertPath),
+            key: fs.readFileSync(resolvedKeyPath)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
