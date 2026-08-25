@@ -1,3 +1,4 @@
+const path = require("path");
 const SessionHandler = require("./session");
 const ProfileHandler = require("./profile");
 const BenefitsHandler = require("./benefits");
@@ -68,8 +69,14 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Insecure way to handle redirects by taking redirect url from query string
-        return res.redirect(req.query.url);
+        var url = req.query.url;
+        if (typeof url === "string" && url.startsWith("/") && !url.startsWith("//") && !url.startsWith("/\\")) {
+            var safePath = path.posix.normalize(url);
+            if (safePath.startsWith("/") && !safePath.startsWith("//")) {
+                return res.redirect(safePath);
+            }
+        }
+        return res.redirect("/");
     });
 
     // Research Page
