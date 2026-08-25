@@ -84,6 +84,7 @@ MongoClient.connect(db, (err, db) => {
         saveUninitialized: true,
         resave: true,
         cookie: {
+            httpOnly: true,
             domain: process.env.SESSION_COOKIE_DOMAIN || "localhost"
         }
         /*
