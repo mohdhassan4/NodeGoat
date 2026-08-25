@@ -1,3 +1,4 @@
+const path = require("path");
 const SessionHandler = require("./session");
 const ProfileHandler = require("./profile");
 const BenefitsHandler = require("./benefits");
@@ -69,10 +70,11 @@ const index = (app, db) => {
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
         var url = req.query.url;
-        // Validate redirect URL: only allow relative paths starting with /
-        // Reject protocol-relative URLs (//), absolute URLs, and backslash tricks
         if (typeof url === "string" && url.startsWith("/") && !url.startsWith("//") && !url.startsWith("/\\")) {
-            return res.redirect(url);
+            var safePath = path.posix.normalize(url);
+            if (safePath.startsWith("/") && !safePath.startsWith("//")) {
+                return res.redirect(safePath);
+            }
         }
         return res.redirect("/");
     });
