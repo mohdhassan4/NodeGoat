@@ -84,7 +84,8 @@ MongoClient.connect(db, (err, db) => {
         saveUninitialized: true,
         resave: true,
         cookie: {
-            secure: true
+            secure: true,
+            maxAge: 2 * 60 * 60 * 1000 // 2 hours
         }
     }));
 
