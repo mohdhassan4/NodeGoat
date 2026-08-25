@@ -78,8 +78,9 @@ MongoClient.connect(db, (err, db) => {
         resave: true,
         cookie: {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: true,
             domain: process.env.COOKIE_DOMAIN || undefined,
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
             maxAge: 24 * 60 * 60 * 1000,
             path: '/'
         }
@@ -141,12 +142,10 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    const certPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
-    const keyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
-    if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+    if (fs.existsSync(path.resolve(__dirname, "./artifacts/cert/server.crt")) && fs.existsSync(path.resolve(__dirname, "./artifacts/cert/server.key"))) {
         const httpsOptions = {
-            key: fs.readFileSync(keyPath),
-            cert: fs.readFileSync(certPath)
+            key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
+            cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
