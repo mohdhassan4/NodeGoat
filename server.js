@@ -21,24 +21,20 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 
-// Validate cert paths to prevent path traversal (CWE-22)
-const certsBaseDir = path.join(__dirname, "artifacts", "cert");
-const keyFile = path.basename(process.env.SSL_KEY_FILE || "server.key");
-const certFile = path.basename(process.env.SSL_CERT_FILE || "server.crt");
-
-let httpsOptions = null;
-if (/^[\w.\-]+$/.test(keyFile) && /^[\w.\-]+$/.test(certFile)) {
-    const keyFullPath = path.join(certsBaseDir, keyFile);
-    const certFullPath = path.join(certsBaseDir, certFile);
-    if (fs.existsSync(keyFullPath) && fs.existsSync(certFullPath)) {
-        httpsOptions = {
-            key: fs.readFileSync(keyFullPath),
-            cert: fs.readFileSync(certFullPath)
+// Load TLS cert/key from fixed paths (CWE-22 safe: no user input in path)
+const certDir = path.join(__dirname, "artifacts", "cert");
+const httpsOptions = (function loadCerts() {
+    const keyPath = path.join(certDir, "server.key");
+    const certPath = path.join(certDir, "server.crt");
+    try {
+        return {
+            key: fs.readFileSync(keyPath),
+            cert: fs.readFileSync(certPath)
         };
+    } catch (e) {
+        return null;
     }
-} else {
-    console.error("Invalid certificate filename");
-}
+})();
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
