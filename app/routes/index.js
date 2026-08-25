@@ -68,12 +68,10 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Only allow relative path redirects on the same origin
-        const url = req.query.url;
-        if (url && url.startsWith("/") && !url.startsWith("//")) {
-            return res.redirect(url);
-        }
-        return res.redirect("/");
+        const ALLOWED_PATHS = ["/tutorial", "/dashboard", "/memos", "/research", "/contributions", "/benefits", "/allocations", "/profile"];
+        const target = req.query.url;
+        const safePath = ALLOWED_PATHS.find((p) => target && target.startsWith(p));
+        return res.redirect(safePath || "/");
     });
 
     // Research Page
