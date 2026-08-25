@@ -187,6 +187,12 @@ MongoClient.connect(db, (err, db) => {
             });
         }
     } else {
+        if (process.env.NODE_ENV === "production") {
+            throw new Error(
+                "SSL_KEY_PATH and SSL_CERT_PATH must be configured in production. " +
+                "Refusing to start an insecure HTTP server."
+            );
+        }
         console.warn("SSL_KEY_PATH or SSL_CERT_PATH not set/found; starting insecure HTTP server (development only)");
         http.createServer(app).listen(port, () => {
             console.log(`Express http server listening on port ${port}`);
