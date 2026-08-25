@@ -21,9 +21,18 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+const certDir = path.join(__dirname, "artifacts", "cert");
+const keyPath = path.normalize(path.join(certDir, "server.key"));
+const crtPath = path.normalize(path.join(certDir, "server.crt"));
+if (!keyPath.startsWith(certDir) || !crtPath.startsWith(certDir)) {
+    throw new Error("Invalid certificate path: path traversal detected");
+}
+if (!fs.existsSync(keyPath) || !fs.existsSync(crtPath)) {
+    throw new Error("Certificate files not found");
+}
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(crtPath)
 };
 */
 
@@ -80,9 +89,17 @@ MongoClient.connect(db, (err, db) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
         secret: cookieSecret,
+        name: "sessionId",
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            domain: process.env.COOKIE_DOMAIN || undefined,
+            maxAge: 24 * 60 * 60 * 1000,
+            path: "/"
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
