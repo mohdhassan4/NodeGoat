@@ -26,11 +26,23 @@ const path = require("path");
 const allowedTlsBaseDir = path.resolve(__dirname);
 
 function validateTlsPath(filePath) {
-    const resolved = path.resolve(__dirname, filePath);
-    const normalized = path.normalize(resolved);
-    if (normalized.indexOf("..") !== -1) {
-        throw new Error("TLS path contains traversal sequence: " + filePath);
+    // Sanitize input before resolution: reject traversal sequences and null bytes.
+    if (!filePath || typeof filePath !== "string") {
+        throw new Error("TLS path must be a non-empty string");
     }
+    if (filePath.indexOf("\0") !== -1) {
+        throw new Error("TLS path contains null byte: " + filePath);
+    }
+    // Split on both separators and reject any ".." segment in the raw input.
+    var segments = filePath.split(/[/\\]/);
+    for (var i = 0; i < segments.length; i++) {
+        if (segments[i] === "..") {
+            throw new Error("TLS path contains traversal sequence: " + filePath);
+        }
+    }
+    // Resolve against the project base and confirm the result stays within it.
+    var safePath = path.join(allowedTlsBaseDir, filePath);
+    var normalized = path.normalize(safePath);
     if (!normalized.startsWith(allowedTlsBaseDir + path.sep) && normalized !== allowedTlsBaseDir) {
         throw new Error("TLS path escapes allowed base directory: " + filePath);
     }
