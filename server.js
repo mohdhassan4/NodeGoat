@@ -17,8 +17,8 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-// TLS cert/key paths are loaded from environment variables (TLS_CERT_FILE, TLS_KEY_FILE)
-// at server creation time below.
+// TLS cert/key are loaded from static paths (certs/server.crt, certs/server.key) at server
+// creation time below.
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -128,32 +128,19 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Use HTTPS when TLS certificate and key are available via environment variables
-    var tlsCert = process.env.TLS_CERT_FILE;
-    var tlsKey = process.env.TLS_KEY_FILE;
+    // Use HTTPS when TLS certificate and key files exist in the certs directory
+    var certFile = path.join(__dirname, "certs", "server.crt");
+    var keyFile = path.join(__dirname, "certs", "server.key");
 
-    if (tlsCert && tlsKey) {
-        // Resolve and normalize paths to prevent path traversal (CWE-22)
-        var baseDir = path.resolve(__dirname);
-        var resolvedCert = path.resolve(baseDir, tlsCert);
-        var resolvedKey = path.resolve(baseDir, tlsKey);
-
-        if (!resolvedCert.startsWith(baseDir + path.sep) && resolvedCert !== baseDir) {
-            throw new Error("TLS_CERT_FILE path traversal detected");
-        }
-        if (!resolvedKey.startsWith(baseDir + path.sep) && resolvedKey !== baseDir) {
-            throw new Error("TLS_KEY_FILE path traversal detected");
-        }
-
+    if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
         var httpsOptions = {
-            cert: fs.readFileSync(resolvedCert),
-            key: fs.readFileSync(resolvedKey)
+            cert: fs.readFileSync(certFile),
+            key: fs.readFileSync(keyFile)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
         });
     } else {
-        // Fallback when TLS credentials are not configured (local development)
         app.listen(port, () => {
             console.log(`Express server listening on port ${port}`);
         });
