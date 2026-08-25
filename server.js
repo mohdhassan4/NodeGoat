@@ -9,7 +9,9 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
+const crypto = require("crypto");
+const https = require("https");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -26,6 +28,114 @@ const httpsOptions = {
     cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
 };
 */
+
+// Generate an ephemeral self-signed TLS certificate using Node built-ins
+function generateSelfSignedCert() {
+    var keyPair = crypto.generateKeyPairSync("rsa", {
+        modulusLength: 2048,
+        publicKeyEncoding: { type: "spki", format: "der" },
+        privateKeyEncoding: { type: "pkcs8", format: "pem" }
+    });
+    var certPem = buildSelfSignedCert(keyPair);
+    return { key: keyPair.privateKey, cert: certPem };
+}
+
+function buildSelfSignedCert(keyPair) {
+    var privateKey = crypto.createPrivateKey(keyPair.privateKey);
+    var publicDer = keyPair.publicKey; // Buffer in DER format
+
+    var serial = crypto.randomBytes(8);
+    var now = new Date();
+    var notBefore = formatAsn1Time(now);
+    var expiry = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+    var notAfter = formatAsn1Time(expiry);
+
+    // Subject/Issuer: CN=localhost
+    var cnOid = derOid("550403");
+    var cnAttr = derSequence([cnOid, derUtf8("localhost")]);
+    var name = derSequence([derSet([cnAttr])]);
+    var validity = derSequence([notBefore, notAfter]);
+
+    // Version: v3(2) with explicit [0] tag
+    var version = derTag(0xa0, derTag(0x02, Buffer.from([0x02])));
+    var serialNum = derInteger(serial);
+
+    // sha256WithRSAEncryption: OID 1.2.840.113549.1.1.11
+    var sigAlgOid = derOid("2a864886f70d01010b");
+    var sigAlg = derSequence([sigAlgOid, Buffer.from("0500", "hex")]);
+
+    var tbs = derSequence([
+        version, serialNum, sigAlg, name, validity,
+        name, publicDer
+    ]);
+
+    var signer = crypto.createSign("SHA256");
+    signer.update(tbs);
+    var signature = signer.sign(privateKey);
+    var sigBits = Buffer.concat([Buffer.from([0x00]), signature]);
+
+    var cert = derSequence([tbs, sigAlg, derBitString(sigBits)]);
+
+    var pem = "-----BEGIN CERTIFICATE-----\n" +
+        cert.toString("base64").match(/[A-Za-z0-9+/=]{1,64}/g).join("\n") +
+        "\n-----END CERTIFICATE-----\n";
+    return pem;
+}
+
+function derTag(tag, content) {
+    var len = content.length;
+    var header;
+    if (len < 128) {
+        header = Buffer.from([tag, len]);
+    } else if (len < 256) {
+        header = Buffer.from([tag, 0x81, len]);
+    } else if (len < 65536) {
+        header = Buffer.from([tag, 0x82, len >> 8, len & 0xff]);
+    } else {
+        header = Buffer.from([
+            tag, 0x83,
+            (len >> 16) & 0xff, (len >> 8) & 0xff, len & 0xff
+        ]);
+    }
+    return Buffer.concat([header, content]);
+}
+
+function derSequence(items) {
+    return derTag(0x30, Buffer.concat(items));
+}
+
+function derSet(items) {
+    return derTag(0x31, Buffer.concat(items));
+}
+
+function derInteger(buf) {
+    var content = (buf[0] & 0x80) ?
+        Buffer.concat([Buffer.from([0x00]), buf]) : buf;
+    return derTag(0x02, content);
+}
+
+function derBitString(content) {
+    return derTag(0x03, content);
+}
+
+function derOid(hexValue) {
+    return derTag(0x06, Buffer.from(hexValue, "hex"));
+}
+
+function derUtf8(str) {
+    return derTag(0x0c, Buffer.from(str, "utf8"));
+}
+
+function formatAsn1Time(date) {
+    var y = date.getUTCFullYear().toString().slice(2);
+    var mo = (date.getUTCMonth() + 1).toString().padStart(2, "0");
+    var d = date.getUTCDate().toString().padStart(2, "0");
+    var h = date.getUTCHours().toString().padStart(2, "0");
+    var mi = date.getUTCMinutes().toString().padStart(2, "0");
+    var sec = date.getUTCSeconds().toString().padStart(2, "0");
+    var s = y + mo + d + h + mi + sec + "Z";
+    return derTag(0x17, Buffer.from(s, "ascii"));
+}
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -82,23 +192,10 @@ MongoClient.connect(db, (err, db) => {
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
-        /*
-        // Fix for A5 - Security MisConfig
-        // Use generic cookie name
-        key: "sessionId",
-        */
-
-        /*
-        // Fix for A3 - XSS
-        // TODO: Add "maxAge"
+        resave: true,
         cookie: {
             httpOnly: true
-            // Remember to start an HTTPS server to get this working
-            // secure: true
         }
-        */
-
     }));
 
     /*
@@ -141,17 +238,15 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
+    // Always use HTTPS with generated self-signed certificate
+    var ephemeral = generateSelfSignedCert();
+    var httpsOptions = {
+        key: ephemeral.key,
+        cert: ephemeral.cert
+    };
 
-    /*
-    // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
+    https.createServer(httpsOptions, app).listen(port, function() {
+        console.log("Express https server listening on port " + port);
     });
-    */
 
 });
