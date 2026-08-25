@@ -98,6 +98,8 @@ MongoClient.connect(db, (err, db) => {
         cookie: {
             httpOnly: true,
             secure: true,
+            maxAge: 2 * 60 * 60 * 1000,
+            expires: new Date(Date.now() + 2 * 60 * 60 * 1000),
             domain: process.env.COOKIE_DOMAIN || "localhost",
             path: "/"
         }
