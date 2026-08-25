@@ -21,8 +21,13 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 
-const certPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
-const keyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
+const basePath = path.resolve(__dirname);
+const certPath = path.normalize(path.resolve(__dirname, "artifacts", "cert", "server.crt"));
+const keyPath = path.normalize(path.resolve(__dirname, "artifacts", "cert", "server.key"));
+// Validate resolved paths remain within the project root to prevent path traversal
+if (!certPath.startsWith(basePath + path.sep) || !keyPath.startsWith(basePath + path.sep)) {
+    throw new Error("Invalid certificate path detected");
+}
 const tlsAvailable = fs.existsSync(certPath) && fs.existsSync(keyPath);
 let httpsOptions = null;
 if (tlsAvailable) {
