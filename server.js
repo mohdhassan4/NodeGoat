@@ -144,9 +144,17 @@ MongoClient.connect(db, (err, db) => {
     const tlsKeyPath = process.env.TLS_KEY_PATH;
 
     if (tlsCertPath && tlsKeyPath) {
+        const resolvedCertPath = path.resolve(tlsCertPath);
+        const resolvedKeyPath = path.resolve(tlsKeyPath);
+        if (!path.isAbsolute(resolvedCertPath)) {
+            throw new Error("TLS_CERT_PATH must resolve to an absolute path");
+        }
+        if (!path.isAbsolute(resolvedKeyPath)) {
+            throw new Error("TLS_KEY_PATH must resolve to an absolute path");
+        }
         const httpsOptions = {
-            cert: fs.readFileSync(path.resolve(tlsCertPath)),
-            key: fs.readFileSync(path.resolve(tlsKeyPath))
+            cert: fs.readFileSync(resolvedCertPath),
+            key: fs.readFileSync(resolvedKeyPath)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
