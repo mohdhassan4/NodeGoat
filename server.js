@@ -241,31 +241,15 @@ MongoClient.connect(db, (err, db) => {
 
     // Use HTTPS with file-based certs or a self-signed certificate
     var httpsOptions;
-    var tlsKeyPath = process.env.TLS_KEY_PATH ||
-        path.resolve(__dirname, "./artifacts/cert/server.key");
-    var tlsCertPath = process.env.TLS_CERT_PATH ||
-        path.resolve(__dirname, "./artifacts/cert/server.crt");
+    var tlsKeyPath = path.join(__dirname, "artifacts", "cert", "server.key");
+    var tlsCertPath = path.join(__dirname, "artifacts", "cert", "server.crt");
 
-    // Validate that cert paths resolve within the project directory
-    var baseDir = path.resolve(__dirname) + path.sep;
-    var resolvedKeyPath = path.resolve(tlsKeyPath);
-    var resolvedCertPath = path.resolve(tlsCertPath);
-    var keyPathSafe = resolvedKeyPath.startsWith(baseDir);
-    var certPathSafe = resolvedCertPath.startsWith(baseDir);
-
-    if (keyPathSafe && certPathSafe &&
-        fs.existsSync(resolvedKeyPath) &&
-        fs.existsSync(resolvedCertPath)) {
+    if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
         httpsOptions = {
-            key: fs.readFileSync(resolvedKeyPath),
-            cert: fs.readFileSync(resolvedCertPath)
+            key: fs.readFileSync(tlsKeyPath),
+            cert: fs.readFileSync(tlsCertPath)
         };
     } else {
-        if (!keyPathSafe || !certPathSafe) {
-            console.warn(
-                "TLS cert paths must resolve within the project."
-            );
-        }
         // Generate ephemeral self-signed cert for development
         var ephemeral = generateSelfSignedCert();
         httpsOptions = {
