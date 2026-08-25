@@ -23,11 +23,11 @@ const path = require("path");
 
 let httpsOptions = null;
 
-if (fs.existsSync(path.resolve(__dirname, "artifacts/cert/server.key")) &&
-    fs.existsSync(path.resolve(__dirname, "artifacts/cert/server.crt"))) {
+if (fs.existsSync("./artifacts/cert/server.key") &&
+    fs.existsSync("./artifacts/cert/server.crt")) {
     httpsOptions = {
-        key: fs.readFileSync(path.resolve(__dirname, "artifacts/cert/server.key")),
-        cert: fs.readFileSync(path.resolve(__dirname, "artifacts/cert/server.crt")),
+        key: fs.readFileSync("./artifacts/cert/server.key"),
+        cert: fs.readFileSync("./artifacts/cert/server.crt"),
         minVersion: "TLSv1.2"
     };
 }
