@@ -76,13 +76,18 @@ MongoClient.connect(db, (err, db) => {
 
     // Enable session management using express middleware
     app.use(session({
+        name: "sessionId",
         // genid: (req) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            path: "/",
+            domain: process.env.COOKIE_DOMAIN
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
