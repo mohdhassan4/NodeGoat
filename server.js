@@ -9,7 +9,6 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
@@ -22,25 +21,12 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 // Load keys for establishing secure HTTPS connection
 let httpsOptions = null;
 try {
-    const basePath = path.resolve(__dirname);
-    const keyPath = process.env.TLS_KEY_PATH ||
-        path.resolve(__dirname, "./artifacts/cert/server.key");
-    const certPath = process.env.TLS_CERT_PATH ||
-        path.resolve(__dirname, "./artifacts/cert/server.crt");
-    const normalizedKey = path.resolve(keyPath);
-    const normalizedCert = path.resolve(certPath);
-    if (!normalizedKey.startsWith(basePath + path.sep) && normalizedKey !== basePath) {
-        throw new Error("TLS key path is outside the allowed directory");
-    }
-    if (!normalizedCert.startsWith(basePath + path.sep) && normalizedCert !== basePath) {
-        throw new Error("TLS cert path is outside the allowed directory");
-    }
     httpsOptions = {
-        key: fs.readFileSync(normalizedKey),
-        cert: fs.readFileSync(normalizedCert)
+        key: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.key")),
+        cert: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.crt"))
     };
 } catch (e) {
-    console.log("TLS certs not found, falling back to HTTP");
+    console.log("TLS certs not found, server will exit");
 }
 
 MongoClient.connect(db, (err, db) => {
@@ -159,13 +145,14 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Use HTTPS when TLS certs are available, fall back to HTTP otherwise
-    const server = httpsOptions
-        ? https.createServer(httpsOptions, app)
-        : http.createServer(app);
+    // Require HTTPS — do not fall back to insecure HTTP
+    if (!httpsOptions) {
+        console.error("TLS certificates not found. Cannot start server without HTTPS.");
+        process.exit(1);
+    }
+    const server = https.createServer(httpsOptions, app);
     server.listen(port, () => {
-        const protocol = httpsOptions ? "https" : "http";
-        console.log(`Express ${protocol} server listening on port ${port}`);
+        console.log(`Express https server listening on port ${port}`);
     });
 
 });
