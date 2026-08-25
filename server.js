@@ -19,7 +19,6 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 // Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
-const path = require("path");
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -129,11 +128,11 @@ MongoClient.connect(db, (err, db) => {
 
     // Fix for A6-Sensitive Data Exposure
     // Use secure HTTPS protocol when TLS certificates are available
-    if (fs.existsSync(path.join(__dirname, "artifacts", "cert", "server.key")) &&
-        fs.existsSync(path.join(__dirname, "artifacts", "cert", "server.crt"))) {
+    if (fs.existsSync("./artifacts/cert/server.key") &&
+        fs.existsSync("./artifacts/cert/server.crt")) {
         var httpsOptions = {
-            key: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.key")),
-            cert: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.crt"))
+            key: fs.readFileSync("./artifacts/cert/server.key"),
+            cert: fs.readFileSync("./artifacts/cert/server.crt")
         };
         https.createServer(httpsOptions, app).listen(port, function() {
             console.log("Express https server listening on port " + port);
