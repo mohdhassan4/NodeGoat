@@ -90,7 +90,8 @@ MongoClient.connect(db, (err, db) => {
         */
         cookie: {
             httpOnly: true,
-            secure: true
+            secure: true,
+            expires: false
         }
 
     }));
