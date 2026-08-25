@@ -104,6 +104,7 @@ MongoClient.connect(db, (err, db) => {
         // genid: (req) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
+        name: "__app_sid",
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
