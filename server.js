@@ -80,6 +80,7 @@ MongoClient.connect(db, (err, db) => {
         // genid: (req) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
+        name: "sessionId",
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
@@ -90,12 +91,6 @@ MongoClient.connect(db, (err, db) => {
             domain: process.env.COOKIE_DOMAIN || undefined,
             maxAge: 24 * 60 * 60 * 1000
         }
-        /*
-        // Fix for A5 - Security MisConfig
-        // Use generic cookie name
-        key: "sessionId",
-        */
-
     }));
 
     /*
