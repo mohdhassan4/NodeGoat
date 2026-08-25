@@ -9,7 +9,9 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -82,22 +84,12 @@ MongoClient.connect(db, (err, db) => {
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
-        /*
-        // Fix for A5 - Security MisConfig
-        // Use generic cookie name
-        key: "sessionId",
-        */
-
-        /*
-        // Fix for A3 - XSS
-        // TODO: Add "maxAge"
+        resave: true,
         cookie: {
-            httpOnly: true
-            // Remember to start an HTTPS server to get this working
-            // secure: true
+            httpOnly: true,
+            secure: true,
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000)
         }
-        */
 
     }));
 
@@ -141,17 +133,40 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
+    // Use HTTPS when TLS cert/key are available, fall back to HTTP otherwise
+    const tlsKeyPath = process.env.TLS_KEY_PATH;
+    const tlsCertPath = process.env.TLS_CERT_PATH;
 
-    /*
-    // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    let resolvedKeyPath = null;
+    let resolvedCertPath = null;
+
+    if (tlsKeyPath && tlsCertPath) {
+        resolvedKeyPath = path.resolve(tlsKeyPath);
+        resolvedCertPath = path.resolve(tlsCertPath);
+
+        // Validate resolved paths are absolute and do not traverse outside the filesystem root
+        if (!resolvedKeyPath.startsWith("/") || resolvedKeyPath.includes("\0")) {
+            resolvedKeyPath = null;
+        }
+        if (!resolvedCertPath.startsWith("/") || resolvedCertPath.includes("\0")) {
+            resolvedCertPath = null;
+        }
+    }
+
+    if (resolvedKeyPath && resolvedCertPath
+        && fs.existsSync(resolvedKeyPath) && fs.existsSync(resolvedCertPath)) {
+        const httpsOptions = {
+            key: fs.readFileSync(resolvedKeyPath),
+            cert: fs.readFileSync(resolvedCertPath)
+        };
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        console.warn("TLS_KEY_PATH or TLS_CERT_PATH not set or files not found; falling back to HTTP");
+        app.listen(port, () => {
+            console.log(`Express http server listening on port ${port}`);
+        });
+    }
 
 });
