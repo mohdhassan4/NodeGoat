@@ -12,7 +12,7 @@ const envConfigs = {
     "test": require("./env/test.js")
 };
 
-const allConf = envConfigs["all"];
+const allConf = envConfigs.all;
 const envName = finalEnv.toLowerCase();
 if (!envConfigs.hasOwnProperty(envName) || envName === "all") {
     throw new Error("Invalid environment: " + envName);
