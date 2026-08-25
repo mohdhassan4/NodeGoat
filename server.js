@@ -17,7 +17,7 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-// TLS key and cert are loaded from paths specified by TLS_KEY_PATH and TLS_CERT_PATH env vars
+// TLS key and cert are loaded from well-known paths: /etc/ssl/private/server.key, /etc/ssl/certs/server.crt
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -126,18 +126,13 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol when TLS credentials are available
-    // path.basename strips directory components to prevent path traversal (CWE-22)
-    var TLS_DIR = "/etc/ssl";
-    var tlsKeyFile = path.basename(process.env.TLS_KEY_PATH || "");
-    var tlsCertFile = path.basename(process.env.TLS_CERT_PATH || "");
-
-    if (tlsKeyFile && tlsCertFile) {
-        var keyFullPath = path.join(TLS_DIR, tlsKeyFile);
-        var certFullPath = path.join(TLS_DIR, tlsCertFile);
+    // Use secure HTTPS protocol when TLS credentials are available at well-known paths.
+    // Paths are hardcoded literals to prevent path traversal (CWE-22).
+    // Deploy TLS materials to these paths via orchestration/secrets mount.
+    if (fs.existsSync("/etc/ssl/private/server.key") && fs.existsSync("/etc/ssl/certs/server.crt")) {
         const httpsOptions = {
-            key: fs.readFileSync(keyFullPath),
-            cert: fs.readFileSync(certFullPath)
+            key: fs.readFileSync("/etc/ssl/private/server.key"),
+            cert: fs.readFileSync("/etc/ssl/certs/server.crt")
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
