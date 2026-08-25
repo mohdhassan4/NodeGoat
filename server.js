@@ -84,7 +84,8 @@ MongoClient.connect(db, (err, db) => {
         saveUninitialized: true,
         resave: true,
         cookie: {
-            secure: true
+            secure: true,
+            expires: new Date(Date.now() + (parseInt(process.env.SESSION_MAX_AGE) || 2 * 60 * 60 * 1000))
         }
         /*
         // Fix for A5 - Security MisConfig
