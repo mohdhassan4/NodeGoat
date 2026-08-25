@@ -22,13 +22,22 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 // Load keys for establishing secure HTTPS connection
 let httpsOptions = null;
 try {
+    const basePath = path.resolve(__dirname);
     const keyPath = process.env.TLS_KEY_PATH ||
         path.resolve(__dirname, "./artifacts/cert/server.key");
     const certPath = process.env.TLS_CERT_PATH ||
         path.resolve(__dirname, "./artifacts/cert/server.crt");
+    const normalizedKey = path.resolve(keyPath);
+    const normalizedCert = path.resolve(certPath);
+    if (!normalizedKey.startsWith(basePath + path.sep) && normalizedKey !== basePath) {
+        throw new Error("TLS key path is outside the allowed directory");
+    }
+    if (!normalizedCert.startsWith(basePath + path.sep) && normalizedCert !== basePath) {
+        throw new Error("TLS cert path is outside the allowed directory");
+    }
     httpsOptions = {
-        key: fs.readFileSync(keyPath),
-        cert: fs.readFileSync(certPath)
+        key: fs.readFileSync(normalizedKey),
+        cert: fs.readFileSync(normalizedCert)
     };
 } catch (e) {
     console.log("TLS certs not found, falling back to HTTP");
