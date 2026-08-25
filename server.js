@@ -22,6 +22,16 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 // Load keys for establishing secure HTTPS connection when available
 const tlsKeyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
 const tlsCertPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
+
+// Validate resolved paths stay within the project directory (path traversal guard)
+const allowedCertBase = path.resolve(__dirname) + path.sep;
+if (!tlsKeyPath.startsWith(allowedCertBase) ||
+    !tlsCertPath.startsWith(allowedCertBase)) {
+    throw new Error(
+        "TLS certificate paths resolve outside the allowed directory"
+    );
+}
+
 const httpsEnabled = fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath);
 let httpsOptions = null;
 if (httpsEnabled) {
