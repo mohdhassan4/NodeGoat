@@ -99,6 +99,7 @@ MongoClient.connect(db, (err, db) => {
         }
         */
         cookie: {
+            httpOnly: true,
             domain: process.env.COOKIE_DOMAIN || undefined
         }
 
