@@ -9,7 +9,6 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -156,15 +155,15 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol when TLS certs are available
+    // Use secure HTTPS protocol
     if (httpsOptions) {
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
         });
     } else {
-        // Fallback to HTTP when TLS certs are not present
-        http.createServer(app).listen(port, () => {
-            console.log(`Express http server listening on port ${port}`);
+        console.log("WARNING: TLS certificates not found. Starting without HTTPS.");
+        app.listen(port, () => {
+            console.log(`Express server listening on port ${port}`);
         });
     }
 
