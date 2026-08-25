@@ -9,7 +9,7 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
+// http module removed — server requires TLS
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -20,20 +20,9 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const certsBaseDir = path.join(__dirname, "artifacts", "cert") + path.sep;
-const keyPath = path.normalize(
-    path.resolve(__dirname, "./artifacts/cert/server.key")
-);
-const certPath = path.normalize(
-    path.resolve(__dirname, "./artifacts/cert/server.crt")
-);
-
-// Validate paths stay within the expected certificates directory
-if (!keyPath.startsWith(certsBaseDir) || !certPath.startsWith(certsBaseDir)) {
-    throw new Error("TLS certificate paths resolve outside the allowed directory");
-}
-
-const tlsAvailable = fs.existsSync(keyPath) && fs.existsSync(certPath);
+const tlsAvailable =
+    fs.existsSync(path.join(__dirname, "artifacts", "cert", "server.key")) &&
+    fs.existsSync(path.join(__dirname, "artifacts", "cert", "server.crt"));
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -152,21 +141,18 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Prefer HTTPS when TLS certificates are available
+    // Start HTTPS server (TLS required)
     if (tlsAvailable) {
         const httpsOptions = {
-            key: fs.readFileSync(keyPath),
-            cert: fs.readFileSync(certPath)
+            key: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.key")),
+            cert: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.crt"))
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
         });
     } else {
-        // HTTP-only fallback when TLS certificates are not present
-        console.warn("TLS certificates not found; falling back to HTTP (not recommended for production)");
-        http.createServer(app).listen(port, () => {
-            console.log(`Express http server listening on port ${port}`);
-        });
+        console.error("TLS certificates not found. Cannot start server securely. Provide certs at artifacts/cert/");
+        process.exit(1);
     }
 
 });
