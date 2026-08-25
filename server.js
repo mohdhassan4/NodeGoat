@@ -21,9 +21,27 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+
+const tlsCertBaseDir = path.resolve(process.env.TLS_CERT_BASE_DIR || __dirname);
+const keyPath = path.resolve(
+    tlsCertBaseDir,
+    process.env.NODE_TLS_KEY || "./artifacts/cert/server.key"
+);
+const certPath = path.resolve(
+    tlsCertBaseDir,
+    process.env.NODE_TLS_CERT || "./artifacts/cert/server.crt"
+);
+
+if (!keyPath.startsWith(tlsCertBaseDir + path.sep) && keyPath !== tlsCertBaseDir) {
+    throw new Error("TLS key path escapes the allowed base directory");
+}
+if (!certPath.startsWith(tlsCertBaseDir + path.sep) && certPath !== tlsCertBaseDir) {
+    throw new Error("TLS cert path escapes the allowed base directory");
+}
+
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath)
 };
 */
 
