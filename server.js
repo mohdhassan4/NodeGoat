@@ -80,6 +80,7 @@ MongoClient.connect(db, (err, db) => {
         // Use generic cookie name
         key: "sessionId",
         */
+        name: "sessionId",
         cookie: {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
