@@ -125,16 +125,41 @@ MongoClient.connect(db, (err, db) => {
     // Use HTTPS when SSL cert/key are available; fall back to HTTP otherwise
     const sslKeyPath = process.env.SSL_KEY_PATH;
     const sslCertPath = process.env.SSL_CERT_PATH;
-    if (sslKeyPath && sslCertPath && fs.existsSync(path.resolve(sslKeyPath)) && fs.existsSync(path.resolve(sslCertPath))) {
+    const sslBasePath = process.env.SSL_BASE_PATH || __dirname;
+
+    function isPathWithinBase(filePath, basePath) {
+        var resolvedBase = path.resolve(basePath);
+        var resolvedFilePath = path.resolve(filePath);
+        return resolvedFilePath.startsWith(resolvedBase + path.sep) ||
+            resolvedFilePath === resolvedBase;
+    }
+
+    const resolvedKey = sslKeyPath ? path.resolve(sslKeyPath) : null;
+    const resolvedCert = sslCertPath ? path.resolve(sslCertPath) : null;
+
+    if (resolvedKey && resolvedCert &&
+        isPathWithinBase(resolvedKey, sslBasePath) &&
+        isPathWithinBase(resolvedCert, sslBasePath) &&
+        fs.existsSync(resolvedKey) &&
+        fs.existsSync(resolvedCert)) {
         const httpsOptions = {
-            key: fs.readFileSync(path.resolve(sslKeyPath)),
-            cert: fs.readFileSync(path.resolve(sslCertPath))
+            key: fs.readFileSync(resolvedKey),
+            cert: fs.readFileSync(resolvedCert)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
         });
     } else {
-        console.warn("SSL certs not found, falling back to HTTP (set SSL_KEY_PATH and SSL_CERT_PATH for HTTPS)");
+        if (sslKeyPath || sslCertPath) {
+            console.warn(
+                "SSL paths invalid or outside allowed base directory," +
+                " falling back to HTTP"
+            );
+        }
+        console.warn(
+            "SSL certs not found, falling back to HTTP" +
+            " (set SSL_KEY_PATH and SSL_CERT_PATH for HTTPS)"
+        );
         http.createServer(app).listen(port, () => {
             console.log(`Express http server listening on port ${port}`);
         });
