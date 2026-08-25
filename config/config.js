@@ -4,13 +4,19 @@ const util = require("util");
 
 const finalEnv = process.env.NODE_ENV || "development";
 
-const allConf = require(path.resolve(__dirname + "/../config/env/all.js"));
-const validEnvs = ["development", "production", "test"];
+const envConfigs = {
+    "all": require(path.resolve(__dirname, "..", "config", "env", "all.js")),
+    "development": require(path.resolve(__dirname, "..", "config", "env", "development.js")),
+    "production": require(path.resolve(__dirname, "..", "config", "env", "production.js")),
+    "test": require(path.resolve(__dirname, "..", "config", "env", "test.js"))
+};
+
+const allConf = envConfigs["all"];
 const envName = finalEnv.toLowerCase();
-if (!validEnvs.includes(envName)) {
+if (!envConfigs.hasOwnProperty(envName) || envName === "all") {
     throw new Error("Invalid environment: " + envName);
 }
-const envConf = require(path.resolve(__dirname, "..", "config", "env", envName + ".js")) || {};
+const envConf = envConfigs[envName] || {};
 
 const config = { ...allConf, ...envConf };
 
