@@ -141,12 +141,12 @@ MongoClient.connect(db, (err, db) => {
 
     // Use HTTPS when TLS key and cert are available, fall back to HTTP otherwise
     // Canonicalize TLS paths to prevent path traversal
-    const tlsKeyPath = process.env.TLS_KEY_PATH
-        ? path.resolve(process.env.TLS_KEY_PATH)
-        : path.resolve(__dirname, "./artifacts/cert/server.key");
-    const tlsCertPath = process.env.TLS_CERT_PATH
-        ? path.resolve(process.env.TLS_CERT_PATH)
-        : path.resolve(__dirname, "./artifacts/cert/server.crt");
+    const tlsKeyPath = process.env.TLS_KEY_PATH ?
+        path.resolve(process.env.TLS_KEY_PATH) :
+        path.resolve(__dirname, "./artifacts/cert/server.key");
+    const tlsCertPath = process.env.TLS_CERT_PATH ?
+        path.resolve(process.env.TLS_CERT_PATH) :
+        path.resolve(__dirname, "./artifacts/cert/server.crt");
 
     // Validate resolved paths are absolute and do not contain traversal
     if (!path.isAbsolute(tlsKeyPath) || tlsKeyPath.indexOf("\0") !== -1) {
