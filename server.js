@@ -21,9 +21,15 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+const certDir = path.resolve(__dirname, "artifacts", "cert");
+const keyFullPath = path.resolve(certDir, "server.key");
+const certFullPath = path.resolve(certDir, "server.crt");
+if (!keyFullPath.startsWith(certDir + path.sep) || !certFullPath.startsWith(certDir + path.sep)) {
+    throw new Error("Invalid certificate path: path traversal detected");
+}
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    key: fs.readFileSync(keyFullPath),
+    cert: fs.readFileSync(certFullPath)
 };
 */
 
@@ -79,10 +85,11 @@ MongoClient.connect(db, (err, db) => {
         // genid: (req) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
+        name: "sessionId",
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
@@ -98,6 +105,11 @@ MongoClient.connect(db, (err, db) => {
             // secure: true
         }
         */
+        cookie: {
+            httpOnly: true,
+            domain: process.env.COOKIE_DOMAIN || undefined,
+            path: "/"
+        }
 
     }));
 
