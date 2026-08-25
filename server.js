@@ -9,7 +9,6 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -150,20 +149,8 @@ MongoClient.connect(db, (err, db) => {
 
     // Fix for A6-Sensitive Data Exposure
     // Use secure HTTPS protocol
-    const httpsPort = port;
-    const httpPort = parseInt(port, 10) + 80;
-    https.createServer(httpsOptions, app).listen(httpsPort, () => {
-        console.log(`Express https server listening on port ${httpsPort}`);
-    });
-
-    // HTTP server redirects all traffic to HTTPS
-    const redirectApp = express();
-    redirectApp.use((req, res) => {
-        res.redirect(301, "https://" + req.headers.host.replace(/:\d+$/, "") +
-            ":" + httpsPort + req.url);
-    });
-    http.createServer(redirectApp).listen(httpPort, () => {
-        console.log(`HTTP redirect server listening on port ${httpPort}`);
+    https.createServer(httpsOptions, app).listen(port, () => {
+        console.log(`Express https server listening on port ${port}`);
     });
 
 });
