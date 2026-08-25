@@ -142,6 +142,9 @@ MongoClient.connect(db, (err, db) => {
     if (process.env.TLS_CERT_PATH && process.env.TLS_KEY_PATH) {
         const keyPath = path.resolve(process.env.TLS_KEY_PATH);
         const certPath = path.resolve(process.env.TLS_CERT_PATH);
+        if (path.normalize(keyPath).includes("..") || path.normalize(certPath).includes("..")) {
+            throw new Error("TLS paths must not contain path traversal sequences");
+        }
         const httpsOptions = {
             key: fs.readFileSync(keyPath),
             cert: fs.readFileSync(certPath)
