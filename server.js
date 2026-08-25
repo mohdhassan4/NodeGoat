@@ -9,7 +9,7 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
+// http module removed — only HTTPS server is started
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -20,9 +20,11 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+const certKeyPath = path.join(__dirname, "artifacts", "cert", "server.key");
+const certCrtPath = path.join(__dirname, "artifacts", "cert", "server.crt");
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "artifacts", "cert", "server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "artifacts", "cert", "server.crt"))
+    key: fs.readFileSync(certKeyPath),
+    cert: fs.readFileSync(certCrtPath)
 };
 
 MongoClient.connect(db, (err, db) => {
@@ -137,15 +139,6 @@ MongoClient.connect(db, (err, db) => {
         console.log(`Express https server listening on port ${port}`);
     });
 
-    // HTTP server only redirects to HTTPS
-    var httpPort = process.env.HTTP_PORT || 80;
-    http.createServer((req, res) => {
-        var host = req.headers.host ? req.headers.host.replace(/:\d+$/, "") : "localhost";
-        var redirectUrl = "https://" + host + ":" + port + req.url;
-        res.writeHead(301, {"Location": redirectUrl});
-        res.end();
-    }).listen(httpPort, () => {
-        console.log(`Express http redirect server listening on port ${httpPort}`);
-    });
+    // Only HTTPS server is used — no HTTP listener started
 
 });
