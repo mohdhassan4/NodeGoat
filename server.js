@@ -15,7 +15,6 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret, hostName } = require("./config/config"); // Application config properties
-/*
 // Fix for A6-Sensitive Data Exposure
 // Load keys for establishing secure HTTPS connection
 const fs = require("fs");
@@ -25,7 +24,6 @@ const httpsOptions = {
     key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
     cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
 };
-*/
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -136,17 +134,22 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-
-    /*
     // Fix for A6-Sensitive Data Exposure
     // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
+    const httpsPort = port;
+    const httpPort = parseInt(port, 10) + 80;
+    https.createServer(httpsOptions, app).listen(httpsPort, () => {
+        console.log(`Express https server listening on port ${httpsPort}`);
     });
-    */
+
+    // HTTP server redirects all traffic to HTTPS
+    const redirectApp = express();
+    redirectApp.use((req, res) => {
+        res.redirect(301, "https://" + req.headers.host.replace(/:\d+$/, "") +
+            ":" + httpsPort + req.url);
+    });
+    http.createServer(redirectApp).listen(httpPort, () => {
+        console.log(`HTTP redirect server listening on port ${httpPort}`);
+    });
 
 });
