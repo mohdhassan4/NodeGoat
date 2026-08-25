@@ -19,8 +19,24 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const certKeyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
-const certFilePath = path.resolve(__dirname, "./artifacts/cert/server.crt");
+const allowedCertDir = path.resolve(__dirname, "artifacts", "cert") + path.sep;
+
+function validateCertPath(filePath) {
+    if (typeof filePath !== "string" || filePath.indexOf("\0") !== -1) {
+        throw new Error("Invalid certificate path");
+    }
+    const resolved = path.resolve(path.normalize(filePath));
+    if (resolved.indexOf("\0") !== -1) {
+        throw new Error("Invalid certificate path after normalization");
+    }
+    if (!resolved.startsWith(allowedCertDir)) {
+        throw new Error("Certificate path escapes allowed directory: " + resolved);
+    }
+    return resolved;
+}
+
+const certKeyPath = validateCertPath(path.resolve(__dirname, "./artifacts/cert/server.key"));
+const certFilePath = validateCertPath(path.resolve(__dirname, "./artifacts/cert/server.crt"));
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -137,10 +153,13 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Prefer HTTPS when TLS certificates are available; fall back to HTTP otherwise
-    if (fs.existsSync(certKeyPath) && fs.existsSync(certFilePath)) {
+    // Re-validate paths at point of use to ensure no traversal reaches fs calls
+    const safeKeyPath = validateCertPath(certKeyPath);
+    const safeCertPath = validateCertPath(certFilePath);
+    if (fs.existsSync(safeKeyPath) && fs.existsSync(safeCertPath)) {
         const httpsOptions = {
-            key: fs.readFileSync(certKeyPath),
-            cert: fs.readFileSync(certFilePath)
+            key: fs.readFileSync(safeKeyPath),
+            cert: fs.readFileSync(safeCertPath)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
