@@ -20,22 +20,21 @@ const https = require("https");
 const path = require("path");
 const allowedCertDir = path.resolve(__dirname, "artifacts", "cert") + path.sep;
 
-function validateCertPath(filePath) {
-    if (typeof filePath !== "string" || filePath.indexOf("\0") !== -1) {
-        throw new Error("Invalid certificate path");
+function readCertFile(filename) {
+    if (typeof filename !== "string" || filename.indexOf("\0") !== -1) {
+        throw new Error("Invalid certificate filename");
     }
-    const resolved = path.resolve(path.normalize(filePath));
-    if (resolved.indexOf("\0") !== -1) {
-        throw new Error("Invalid certificate path after normalization");
+    if (filename.indexOf("..") !== -1 ||
+        filename.indexOf(path.sep) !== -1 ||
+        filename.indexOf("/") !== -1) {
+        throw new Error("Certificate filename must not contain path separators or traversal");
     }
-    if (!resolved.startsWith(allowedCertDir)) {
-        throw new Error("Certificate path escapes allowed directory: " + resolved);
+    var filePath = path.join(allowedCertDir, filename);
+    if (!fs.existsSync(filePath)) {
+        throw new Error("Certificate file not found: " + filename);
     }
-    return resolved;
+    return fs.readFileSync(filePath);
 }
-
-const certKeyPath = validateCertPath(path.resolve(__dirname, "./artifacts/cert/server.key"));
-const certFilePath = validateCertPath(path.resolve(__dirname, "./artifacts/cert/server.crt"));
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -152,20 +151,18 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Require HTTPS — refuse to start without TLS certificates
-    // Re-validate paths at point of use to ensure no traversal reaches fs calls
-    const safeKeyPath = validateCertPath(certKeyPath);
-    const safeCertPath = validateCertPath(certFilePath);
-    if (fs.existsSync(safeKeyPath) && fs.existsSync(safeCertPath)) {
+    // readCertFile validates filename has no traversal and reads from allowedCertDir
+    try {
         const httpsOptions = {
-            key: fs.readFileSync(safeKeyPath),
-            cert: fs.readFileSync(safeCertPath)
+            key: readCertFile("server.key"),
+            cert: readCertFile("server.crt")
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
         });
-    } else {
+    } catch (certErr) {
         console.error("TLS certificates not found. Server requires HTTPS to start.");
-        console.error("Provide valid cert and key at: " + safeKeyPath + ", " + safeCertPath);
+        console.error(certErr.message);
         process.exit(1);
     }
 
