@@ -19,19 +19,9 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const certBaseDir = path.resolve(__dirname, "artifacts", "cert");
-
-function safeCertPath(fileName) {
-    var resolved = path.normalize(path.resolve(certBaseDir, fileName));
-    if (!resolved.startsWith(certBaseDir + path.sep)) {
-        throw new Error("Path traversal detected: " + fileName);
-    }
-    return resolved;
-}
-
 const httpsOptions = {
-    key: fs.readFileSync(safeCertPath("server.key")),
-    cert: fs.readFileSync(safeCertPath("server.crt"))
+    key: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.key")),
+    cert: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.crt"))
 };
 
 MongoClient.connect(db, (err, db) => {
