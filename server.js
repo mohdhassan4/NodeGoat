@@ -85,7 +85,8 @@ MongoClient.connect(db, (err, db) => {
         resave: true,
         cookie: {
             httpOnly: true,
-            secure: true
+            secure: true,
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000)
         }
 
     }));
