@@ -150,12 +150,13 @@ MongoClient.connect(db, (err, db) => {
     // Use HTTPS when SSL cert and key are available; fall back to HTTP only for development
     const sslKeyPath = process.env.SSL_KEY_PATH;
     const sslCertPath = process.env.SSL_CERT_PATH;
+    const sslBaseDir = path.resolve(process.env.SSL_BASE_DIR || __dirname);
 
-    if (sslKeyPath && sslCertPath && fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
-        // Validate SSL file paths to prevent path traversal
-        const sslBaseDir = path.resolve(process.env.SSL_BASE_DIR || __dirname);
-        const resolvedKey = path.resolve(sslBaseDir, sslKeyPath);
-        const resolvedCert = path.resolve(sslBaseDir, sslCertPath);
+    // Validate SSL file paths to prevent path traversal before any filesystem access
+    let resolvedKey, resolvedCert;
+    if (sslKeyPath && sslCertPath) {
+        resolvedKey = path.resolve(sslBaseDir, sslKeyPath);
+        resolvedCert = path.resolve(sslBaseDir, sslCertPath);
 
         if (!resolvedKey.startsWith(sslBaseDir + path.sep) && resolvedKey !== sslBaseDir) {
             throw new Error("SSL_KEY_PATH resolves outside allowed directory");
@@ -163,7 +164,9 @@ MongoClient.connect(db, (err, db) => {
         if (!resolvedCert.startsWith(sslBaseDir + path.sep) && resolvedCert !== sslBaseDir) {
             throw new Error("SSL_CERT_PATH resolves outside allowed directory");
         }
+    }
 
+    if (resolvedKey && resolvedCert && fs.existsSync(resolvedKey) && fs.existsSync(resolvedCert)) {
         const httpsOptions = {
             key: fs.readFileSync(resolvedKey),
             cert: fs.readFileSync(resolvedCert)
