@@ -20,27 +20,9 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 
-// Validate TLS file paths to prevent path traversal (CWE-22)
-const allowedTlsDir = path.resolve(__dirname, "artifacts", "cert");
-
-function validateTlsPath(filePath) {
-    var resolved = path.resolve(__dirname, filePath);
-    var normalized = path.normalize(resolved);
-    if (!normalized.startsWith(allowedTlsDir + path.sep) &&
-        normalized !== allowedTlsDir) {
-        throw new Error(
-            "TLS file path escapes allowed directory"
-        );
-    }
-    return normalized;
-}
-
-var tlsKeyPath = validateTlsPath(
-    path.join("artifacts", "cert", "server.key")
-);
-var tlsCertPath = validateTlsPath(
-    path.join("artifacts", "cert", "server.crt")
-);
+// TLS cert/key paths are static constants (no user input)
+const tlsKeyPath = __dirname + "/artifacts/cert/server.key";
+const tlsCertPath = __dirname + "/artifacts/cert/server.crt";
 
 const httpsOptions = {
     key: fs.readFileSync(tlsKeyPath),
