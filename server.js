@@ -152,8 +152,16 @@ MongoClient.connect(db, (err, db) => {
     if (process.env.TLS_CERT_PATH && process.env.TLS_KEY_PATH) {
         const https = require("https");
         const fs = require("fs");
-        const resolvedKey = path.resolve(process.env.TLS_KEY_PATH);
-        const resolvedCert = path.resolve(process.env.TLS_CERT_PATH);
+        const tlsPaths = {
+            key: process.env.TLS_KEY_PATH || "./certs/server.key",
+            cert: process.env.TLS_CERT_PATH || "./certs/server.cert"
+        };
+        const allowedDir = path.resolve("./certs");
+        const resolvedKey = path.resolve(tlsPaths.key);
+        const resolvedCert = path.resolve(tlsPaths.cert);
+        if (!resolvedKey.startsWith(allowedDir) || !resolvedCert.startsWith(allowedDir)) {
+            throw new Error("TLS paths must be within the certs directory");
+        }
         const httpsOptions = {
             key: fs.readFileSync(resolvedKey),
             cert: fs.readFileSync(resolvedCert)
@@ -162,7 +170,8 @@ MongoClient.connect(db, (err, db) => {
             console.log(`Express https server listening on port ${port}`);
         });
     } else {
-        http.createServer(app).listen(port, () => {
+        const server = http.createServer(app);
+        server.listen(port, () => {
             console.log(`Express http server listening on port ${port}`);
         });
     }
