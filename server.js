@@ -4,12 +4,15 @@ const express = require("express");
 const favicon = require("serve-favicon");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-// const csrf = require('csurf');
+const csrf = require("csurf");
 const consolidate = require("consolidate"); // Templating library adapter for Express
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -76,32 +79,30 @@ MongoClient.connect(db, (err, db) => {
 
     // Enable session management using express middleware
     app.use(session({
+        name: "sessionId",
         // genid: (req) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            httpOnly: true,
+            secure: true,
+            domain: process.env.SESSION_COOKIE_DOMAIN || undefined,
+            path: "/",
+            maxAge: 2 * 60 * 60 * 1000,
+            expires: new Date(Date.now() + 2 * 60 * 60 * 1000)
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
         key: "sessionId",
         */
 
-        /*
-        // Fix for A3 - XSS
-        // TODO: Add "maxAge"
-        cookie: {
-            httpOnly: true
-            // Remember to start an HTTPS server to get this working
-            // secure: true
-        }
-        */
-
     }));
 
-    /*
     // Fix for A8 - CSRF
     // Enable Express csrf protection
     app.use(csrf());
@@ -110,7 +111,6 @@ MongoClient.connect(db, (err, db) => {
         res.locals.csrftoken = req.csrfToken();
         next();
     });
-    */
 
     // Register templating engine
     app.engine(".html", consolidate.swig);
@@ -141,17 +141,56 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
+    // Use HTTPS when SSL cert and key are available; fall back to HTTP only for development
+    const sslKeyPath = process.env.SSL_KEY_PATH;
+    const sslCertPath = process.env.SSL_CERT_PATH;
+    const sslBaseDir = path.resolve(process.env.SSL_BASE_DIR || __dirname);
 
-    /*
-    // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    // Validate SSL file paths to prevent path traversal before any filesystem access
+    let resolvedKey, resolvedCert;
+    if (sslKeyPath && sslCertPath) {
+        resolvedKey = path.resolve(sslBaseDir, sslKeyPath);
+        resolvedCert = path.resolve(sslBaseDir, sslCertPath);
+
+        if (!resolvedKey.startsWith(sslBaseDir + path.sep) && resolvedKey !== sslBaseDir) {
+            throw new Error("SSL_KEY_PATH resolves outside allowed directory");
+        }
+        if (!resolvedCert.startsWith(sslBaseDir + path.sep) && resolvedCert !== sslBaseDir) {
+            throw new Error("SSL_CERT_PATH resolves outside allowed directory");
+        }
+    }
+
+    if (resolvedKey && resolvedCert && fs.existsSync(resolvedKey) && fs.existsSync(resolvedCert)) {
+        const httpsOptions = {
+            key: fs.readFileSync(resolvedKey),
+            cert: fs.readFileSync(resolvedCert)
+        };
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+
+        // Redirect HTTP to HTTPS on a secondary port if HTTP_PORT is set
+        const httpPort = process.env.HTTP_PORT;
+        if (httpPort) {
+            const redirectApp = express();
+            redirectApp.use((req, res) => {
+                res.redirect(301, "https://" + req.headers.host.replace(":" + httpPort, ":" + port) + req.url);
+            });
+            http.createServer(redirectApp).listen(httpPort, () => {
+                console.log(`HTTP redirect server listening on port ${httpPort}`);
+            });
+        }
+    } else {
+        if (process.env.NODE_ENV === "production") {
+            throw new Error(
+                "SSL_KEY_PATH and SSL_CERT_PATH must be configured in production. " +
+                "Refusing to start an insecure HTTP server."
+            );
+        }
+        console.warn("SSL_KEY_PATH or SSL_CERT_PATH not set/found; starting insecure HTTP server (development only)");
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port}`);
+        });
+    }
 
 });
