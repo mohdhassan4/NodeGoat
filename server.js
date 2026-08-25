@@ -156,25 +156,27 @@ MongoClient.connect(db, (err, db) => {
         throw new Error("Invalid TLS cert path");
     }
 
+    var httpsStarted = false;
     if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
-        const httpsOptions = {
-            key: fs.readFileSync(tlsKeyPath),
-            cert: fs.readFileSync(tlsCertPath)
-        };
-        https.createServer(httpsOptions, app).listen(port, () => {
-            console.log(`Express https server listening on port ${port}`);
-        });
-    } else if (process.env.NODE_ENV !== "production") {
-        console.warn(
-            "TLS certificate or key not found. Falling back to HTTP (non-production). " +
-            "Set TLS_KEY_PATH and TLS_CERT_PATH environment variables for HTTPS."
-        );
+        try {
+            const httpsOptions = {
+                key: fs.readFileSync(tlsKeyPath),
+                cert: fs.readFileSync(tlsCertPath)
+            };
+            https.createServer(httpsOptions, app).listen(port, () => {
+                console.log(`Express https server listening on port ${port}`);
+            });
+            httpsStarted = true;
+        } catch (e) {
+            console.warn("TLS key/cert invalid: " + e.message);
+        }
+    }
+    if (!httpsStarted && process.env.NODE_ENV !== "production") {
         http.createServer(app).listen(port, () => {
             console.log(`Express http server listening on port ${port}`);
         });
-    } else {
+    } else if (!httpsStarted) {
         console.error(
-            "TLS certificate or key not found. " +
             "HTTPS is required in production. " +
             "Set TLS_KEY_PATH and TLS_CERT_PATH environment variables."
         );
