@@ -10,7 +10,8 @@ const envConfigs = {
     "production": require("../config/env/production.js"),
     "test": require("../config/env/test.js")
 };
-const envConf = envConfigs[finalEnv.toLowerCase()] || {};
+const envKey = finalEnv.toLowerCase();
+const envConf = Object.prototype.hasOwnProperty.call(envConfigs, envKey) ? envConfigs[envKey] : {};
 
 const config = { ...allConf, ...envConf };
 
