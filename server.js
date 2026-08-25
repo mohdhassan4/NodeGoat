@@ -21,9 +21,15 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+const certDir = path.normalize(path.join(__dirname, "artifacts", "cert"));
+const keyPath = path.normalize(path.join(certDir, "server.key"));
+const certPath = path.normalize(path.join(certDir, "server.crt"));
+if (!keyPath.startsWith(certDir) || !certPath.startsWith(certDir)) {
+    throw new Error("Invalid certificate path");
+}
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath)
 };
 */
 
@@ -82,7 +88,11 @@ MongoClient.connect(db, (err, db) => {
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 7200000
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
