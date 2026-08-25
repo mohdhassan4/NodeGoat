@@ -20,9 +20,7 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const certPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
-const keyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
-const httpsEnabled = fs.existsSync(certPath) && fs.existsSync(keyPath);
+const httpsEnabled = fs.existsSync(path.resolve(__dirname, "./artifacts/cert/server.crt")) && fs.existsSync(path.resolve(__dirname, "./artifacts/cert/server.key"));
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -136,8 +134,8 @@ MongoClient.connect(db, (err, db) => {
     // Use HTTPS when certificates are available, fall back to HTTP for development
     if (httpsEnabled) {
         const httpsOptions = {
-            key: fs.readFileSync(keyPath),
-            cert: fs.readFileSync(certPath)
+            key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
+            cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
