@@ -89,7 +89,8 @@ MongoClient.connect(db, (err, db) => {
         key: "sessionId",
         */
         cookie: {
-            secure: process.env.NODE_ENV === 'production'
+            secure: process.env.NODE_ENV === 'production',
+            domain: process.env.APP_DOMAIN || undefined
         }
     }));
 
