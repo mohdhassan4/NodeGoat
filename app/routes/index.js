@@ -1,4 +1,3 @@
-const url = require("url");
 const SessionHandler = require("./session");
 const ProfileHandler = require("./profile");
 const BenefitsHandler = require("./benefits");
@@ -13,6 +12,7 @@ const index = (app, db) => {
 
     "use strict";
 
+    const url = require("url");
     const sessionHandler = new SessionHandler(db);
     const profileHandler = new ProfileHandler(db);
     const benefitsHandler = new BenefitsHandler(db);
