@@ -17,9 +17,18 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
+// Canonicalize and validate a file path to prevent path traversal (CWE-22)
+function safePath(filePath) {
+    var resolved = path.resolve(filePath);
+    if (resolved.indexOf("\0") !== -1) {
+        throw new Error("Invalid file path: null byte detected");
+    }
+    return resolved;
+}
+
 // Load TLS key and cert from env-configured paths or project defaults
-const tlsKeyPath = process.env.TLS_KEY_PATH || path.resolve(__dirname, "./artifacts/cert/server.key");
-const tlsCertPath = process.env.TLS_CERT_PATH || path.resolve(__dirname, "./artifacts/cert/server.crt");
+const tlsKeyPath = safePath(process.env.TLS_KEY_PATH || path.join(__dirname, "artifacts/cert/server.key"));
+const tlsCertPath = safePath(process.env.TLS_CERT_PATH || path.join(__dirname, "artifacts/cert/server.crt"));
 let httpsOptions = null;
 try {
     httpsOptions = {
