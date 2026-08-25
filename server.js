@@ -11,6 +11,7 @@ const swig = require("swig");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
 const fs = require("fs");
+const path = require("path");
 const https = require("https");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
@@ -139,9 +140,11 @@ MongoClient.connect(db, (err, db) => {
 
     // Use HTTPS when TLS credentials are available, fall back to HTTP otherwise
     if (process.env.TLS_CERT_PATH && process.env.TLS_KEY_PATH) {
+        const keyPath = path.resolve(process.env.TLS_KEY_PATH);
+        const certPath = path.resolve(process.env.TLS_CERT_PATH);
         const httpsOptions = {
-            key: fs.readFileSync(process.env.TLS_KEY_PATH),
-            cert: fs.readFileSync(process.env.TLS_CERT_PATH)
+            key: fs.readFileSync(keyPath),
+            cert: fs.readFileSync(certPath)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
