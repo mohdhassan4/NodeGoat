@@ -1,5 +1,4 @@
 const _ = require("underscore");
-const path = require("path");
 const util = require("util");
 
 const finalEnv = process.env.NODE_ENV || "development";
@@ -10,8 +9,13 @@ if (!VALID_ENVS[env]) {
     throw new Error("Invalid environment: " + env);
 }
 
-const allConf = require(path.join(__dirname, "..", "config", "env", "all.js"));
-const envConf = require(path.join(__dirname, "..", "config", "env", env + ".js")) || {};
+const envConfigs = {
+    development: require("../config/env/development.js"),
+    production: require("../config/env/production.js"),
+    test: require("../config/env/test.js")
+};
+const allConf = require("../config/env/all.js");
+const envConf = envConfigs[env] || {};
 
 const config = { ...allConf, ...envConf };
 
