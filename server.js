@@ -10,6 +10,7 @@ const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const fs = require("fs");
+const path = require("path");
 const http = require("http");
 const https = require("https");
 const marked = require("marked");
@@ -133,9 +134,21 @@ MongoClient.connect(db, (err, db) => {
     var tlsKey = process.env.TLS_KEY_FILE;
 
     if (tlsCert && tlsKey) {
+        // Resolve and normalize paths to prevent path traversal (CWE-22)
+        var baseDir = path.resolve(__dirname);
+        var resolvedCert = path.resolve(baseDir, tlsCert);
+        var resolvedKey = path.resolve(baseDir, tlsKey);
+
+        if (!resolvedCert.startsWith(baseDir + path.sep) && resolvedCert !== baseDir) {
+            throw new Error("TLS_CERT_FILE path traversal detected");
+        }
+        if (!resolvedKey.startsWith(baseDir + path.sep) && resolvedKey !== baseDir) {
+            throw new Error("TLS_KEY_FILE path traversal detected");
+        }
+
         var httpsOptions = {
-            cert: fs.readFileSync(tlsCert),
-            key: fs.readFileSync(tlsKey)
+            cert: fs.readFileSync(resolvedCert),
+            key: fs.readFileSync(resolvedKey)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
