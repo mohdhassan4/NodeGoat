@@ -12,6 +12,7 @@ const MongoClient = require("mongodb").MongoClient; // Driver for connecting to 
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -142,10 +143,29 @@ MongoClient.connect(db, (err, db) => {
 
     // Fix for A6-Sensitive Data Exposure
     // Use secure HTTPS protocol when SSL_KEY_PATH and SSL_CERT_PATH are set
-    const sslKeyPath = process.env.SSL_KEY_PATH;
-    const sslCertPath = process.env.SSL_CERT_PATH;
+    // Validate SSL paths to prevent path traversal
+    var sslKeyPath = process.env.SSL_KEY_PATH ? path.resolve(process.env.SSL_KEY_PATH) : null;
+    var sslCertPath = process.env.SSL_CERT_PATH ? path.resolve(process.env.SSL_CERT_PATH) : null;
+    var projectRoot = path.resolve(__dirname);
 
-    if (sslKeyPath && sslCertPath && fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
+    function isValidSslPath(resolvedPath) {
+        if (!resolvedPath) {
+            return false;
+        }
+        // Ensure no traversal sequences remain after resolution
+        var normalized = path.normalize(resolvedPath);
+        if (normalized.indexOf("..") !== -1) {
+            return false;
+        }
+        // Ensure path is absolute and within project root or /etc/ssl
+        if (normalized.startsWith(projectRoot) || normalized.startsWith("/etc/ssl")) {
+            return true;
+        }
+        return false;
+    }
+
+    if (isValidSslPath(sslKeyPath) && isValidSslPath(sslCertPath) &&
+        fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
         const httpsOptions = {
             key: fs.readFileSync(sslKeyPath),
             cert: fs.readFileSync(sslCertPath)
