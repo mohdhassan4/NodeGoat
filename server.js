@@ -141,17 +141,23 @@ MongoClient.connect(db, (err, db) => {
 
     // Fix for A6-Sensitive Data Exposure
     // Use secure HTTPS protocol when TLS certificates are available
-    const safePath = (filePath) => {
+    const safePath = (filePath, allowedBase) => {
         const resolved = path.resolve(filePath);
-        const normalized = path.normalize(resolved);
-        if (normalized.includes("..")) {
-            throw new Error("Path traversal detected: " + filePath);
+        if (!resolved.startsWith(allowedBase + path.sep) && resolved !== allowedBase) {
+            throw new Error("Path outside allowed directory: " + filePath);
         }
-        return normalized;
+        return resolved;
     };
 
-    const tlsKeyPath = safePath(process.env.TLS_KEY_PATH || path.resolve(__dirname, "./artifacts/cert/server.key"));
-    const tlsCertPath = safePath(process.env.TLS_CERT_PATH || path.resolve(__dirname, "./artifacts/cert/server.crt"));
+    const certBase = path.resolve(process.env.TLS_CERT_BASE || __dirname);
+    const tlsKeyPath = safePath(
+        process.env.TLS_KEY_PATH || path.resolve(__dirname, "./artifacts/cert/server.key"),
+        certBase
+    );
+    const tlsCertPath = safePath(
+        process.env.TLS_CERT_PATH || path.resolve(__dirname, "./artifacts/cert/server.crt"),
+        certBase
+    );
 
     if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
         const httpsOptions = {
@@ -161,11 +167,13 @@ MongoClient.connect(db, (err, db) => {
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
         });
-    } else {
-        console.warn("TLS certificates not found at " + tlsKeyPath + " and " + tlsCertPath + ", falling back to HTTP");
+    } else if (process.env.ALLOW_HTTP === "true") {
         http.createServer(app).listen(port, () => {
             console.log(`Express http server listening on port ${port}`);
         });
+    } else {
+        console.error("TLS certificates not found and ALLOW_HTTP is not enabled. Server not started.");
+        process.exit(1);
     }
 
 });
