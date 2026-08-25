@@ -15,17 +15,20 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
 // Fix for A6-Sensitive Data Exposure
 // Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+
+// Certificate paths use only literal path segments to prevent path traversal (CWE-22)
+const certKeyPath = path.join(__dirname, "artifacts", "cert", "server.key");
+const certCrtPath = path.join(__dirname, "artifacts", "cert", "server.crt");
+
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    key: fs.readFileSync(certKeyPath),
+    cert: fs.readFileSync(certCrtPath)
 };
-*/
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -79,10 +82,19 @@ MongoClient.connect(db, (err, db) => {
         // genid: (req) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
+        name: "sessionId",
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            httpOnly: true,
+            secure: true,
+            domain: process.env.SESSION_DOMAIN || "localhost",
+            maxAge: 24 * 60 * 60 * 1000,
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            path: "/"
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
