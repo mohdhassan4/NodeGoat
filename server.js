@@ -140,10 +140,21 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Use HTTPS when TLS key and cert are available, fall back to HTTP otherwise
-    const tlsKeyPath = process.env.TLS_KEY_PATH ||
-        path.resolve(__dirname, "./artifacts/cert/server.key");
-    const tlsCertPath = process.env.TLS_CERT_PATH ||
-        path.resolve(__dirname, "./artifacts/cert/server.crt");
+    // Canonicalize TLS paths to prevent path traversal
+    const tlsKeyPath = process.env.TLS_KEY_PATH
+        ? path.resolve(process.env.TLS_KEY_PATH)
+        : path.resolve(__dirname, "./artifacts/cert/server.key");
+    const tlsCertPath = process.env.TLS_CERT_PATH
+        ? path.resolve(process.env.TLS_CERT_PATH)
+        : path.resolve(__dirname, "./artifacts/cert/server.crt");
+
+    // Validate resolved paths are absolute and do not contain traversal
+    if (!path.isAbsolute(tlsKeyPath) || tlsKeyPath.indexOf("\0") !== -1) {
+        throw new Error("Invalid TLS key path");
+    }
+    if (!path.isAbsolute(tlsCertPath) || tlsCertPath.indexOf("\0") !== -1) {
+        throw new Error("Invalid TLS cert path");
+    }
 
     if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
         const httpsOptions = {
@@ -153,14 +164,21 @@ MongoClient.connect(db, (err, db) => {
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
         });
-    } else {
+    } else if (process.env.NODE_ENV !== "production") {
         console.warn(
-            "TLS certificate or key not found. Falling back to HTTP. " +
+            "TLS certificate or key not found. Falling back to HTTP (non-production). " +
             "Set TLS_KEY_PATH and TLS_CERT_PATH environment variables for HTTPS."
         );
         http.createServer(app).listen(port, () => {
             console.log(`Express http server listening on port ${port}`);
         });
+    } else {
+        console.error(
+            "TLS certificate or key not found. " +
+            "HTTPS is required in production. " +
+            "Set TLS_KEY_PATH and TLS_CERT_PATH environment variables."
+        );
+        process.exit(1);
     }
 
 });
