@@ -19,8 +19,15 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+const allowedCertDir = path.resolve(__dirname, "./artifacts/cert");
 const tlsKeyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
 const tlsCertPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
+
+if (!tlsKeyPath.startsWith(allowedCertDir + path.sep) ||
+    !tlsCertPath.startsWith(allowedCertDir + path.sep)) {
+    throw new Error("TLS certificate paths must reside within the allowed cert directory");
+}
+
 let httpsOptions = null;
 if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
     httpsOptions = {
