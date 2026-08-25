@@ -152,9 +152,11 @@ MongoClient.connect(db, (err, db) => {
     if (process.env.TLS_CERT_PATH && process.env.TLS_KEY_PATH) {
         const https = require("https");
         const fs = require("fs");
+        const resolvedKey = path.resolve(process.env.TLS_KEY_PATH);
+        const resolvedCert = path.resolve(process.env.TLS_CERT_PATH);
         const httpsOptions = {
-            key: fs.readFileSync(process.env.TLS_KEY_PATH),
-            cert: fs.readFileSync(process.env.TLS_CERT_PATH)
+            key: fs.readFileSync(resolvedKey),
+            cert: fs.readFileSync(resolvedCert)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);

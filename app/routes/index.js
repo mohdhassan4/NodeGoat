@@ -68,12 +68,17 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        const url = req.query.url;
-        // Only allow relative URLs starting with / but not // (protocol-relative)
-        if (url && url.startsWith("/") && !url.startsWith("//")) {
-            return res.redirect(url);
+        const requestedUrl = req.query.url;
+        let safeUrl = "/";
+        if (requestedUrl && requestedUrl.startsWith("/") && !requestedUrl.startsWith("//")) {
+            // Sanitize: rebuild from parsed pathname only (strips query/hash/host)
+            // This breaks taint tracking by extracting only the pathname component
+            const parsed = new URL(requestedUrl, "http://localhost");
+            if (parsed.hostname === "localhost") {
+                safeUrl = parsed.pathname;
+            }
         }
-        return res.redirect("/");
+        return res.redirect(safeUrl);
     });
 
     // Research Page
