@@ -11,7 +11,6 @@ const swig = require("swig");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const https = require("https");
 const fs = require("fs");
-const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -127,36 +126,21 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol when TLS certs are available
-    const allowedCertsDir = path.resolve(__dirname, "./artifacts/cert");
-    const certPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
-    const keyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
+    // Use secure HTTPS protocol — hardcoded cert paths (no user input)
+    const certFile = "./artifacts/cert/server.crt";
+    const keyFile = "./artifacts/cert/server.key";
 
-    // Path traversal guard: ensure resolved paths are within the allowed certs directory
-    const certInBounds = certPath.startsWith(allowedCertsDir + path.sep) ||
-        certPath === allowedCertsDir;
-    const keyInBounds = keyPath.startsWith(allowedCertsDir + path.sep) ||
-        keyPath === allowedCertsDir;
-
-    if (!certInBounds || !keyInBounds) {
+    if (!fs.existsSync(certFile) || !fs.existsSync(keyFile)) {
         console.error(
-            "Error: TLS cert/key paths resolve outside the allowed directory. " +
-            "Refusing to load."
-        );
-        process.exit(1);
-    }
-
-    if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
-        console.error(
-            "Error: TLS certificates not found at " + allowedCertsDir + ". " +
+            "Error: TLS certificates not found. " +
             "Cannot start without valid TLS configuration."
         );
         process.exit(1);
     }
 
     const httpsOptions = {
-        key: fs.readFileSync(keyPath),
-        cert: fs.readFileSync(certPath)
+        key: fs.readFileSync(keyFile),
+        cert: fs.readFileSync(certFile)
     };
     https.createServer(httpsOptions, app).listen(port, () => {
         console.log(`Express https server listening on port ${port}`);
