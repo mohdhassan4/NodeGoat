@@ -114,8 +114,9 @@ MongoClient.connect(db, (err, db) => {
         // Fix for A3 - XSS and target cookie security
         cookie: {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: true,
             maxAge: 24 * 60 * 60 * 1000,
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
             path: "/",
             domain: process.env.COOKIE_DOMAIN || "localhost"
         }
