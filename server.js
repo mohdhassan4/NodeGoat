@@ -21,9 +21,18 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+const certsBaseDir = path.resolve(__dirname, "./artifacts/cert");
+const resolvedKey = path.resolve(__dirname, "./artifacts/cert/server.key");
+const resolvedCert = path.resolve(__dirname, "./artifacts/cert/server.crt");
+if (!resolvedKey.startsWith(certsBaseDir + path.sep)) {
+    throw new Error("Key path escapes the allowed certs directory");
+}
+if (!resolvedCert.startsWith(certsBaseDir + path.sep)) {
+    throw new Error("Cert path escapes the allowed certs directory");
+}
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    key: fs.readFileSync(resolvedKey),
+    cert: fs.readFileSync(resolvedCert)
 };
 */
 
@@ -80,9 +89,14 @@ MongoClient.connect(db, (err, db) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
         secret: cookieSecret,
+        name: "sessionId",
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            path: "/",
+            domain: process.env.COOKIE_DOMAIN
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
