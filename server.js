@@ -23,20 +23,22 @@ const path = require("path");
 
 // Validate TLS file paths to prevent path traversal attacks
 function validateTlsPath(envPath, defaultPath) {
+    if (!envPath) {
+        return defaultPath;
+    }
     const allowedBase = path.resolve(__dirname);
-    let targetPath;
-    if (envPath) {
-        targetPath = path.resolve(allowedBase, envPath);
-        const normalized = path.normalize(targetPath);
-        if (normalized.indexOf(allowedBase + path.sep) !== 0 &&
-            normalized !== allowedBase) {
-            console.log("TLS path rejected (outside allowed directory): " + envPath);
-            targetPath = defaultPath;
-        } else {
-            targetPath = normalized;
-        }
-    } else {
-        targetPath = defaultPath;
+    // Reject traversal sequences and absolute paths before any path resolution
+    if (envPath.includes("..") || path.isAbsolute(envPath)) {
+        console.log("TLS path rejected (traversal attempt): " + envPath);
+        return defaultPath;
+    }
+    // Input is a validated relative path; construct the full path safely
+    const targetPath = path.normalize(allowedBase + path.sep + envPath);
+    // Belt-and-suspenders: ensure constructed path stays within allowed directory
+    if (!targetPath.startsWith(allowedBase + path.sep) &&
+        targetPath !== allowedBase) {
+        console.log("TLS path rejected (outside allowed directory): " + envPath);
+        return defaultPath;
     }
     return targetPath;
 }
