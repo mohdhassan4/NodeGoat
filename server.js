@@ -20,13 +20,9 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 
-// TLS cert/key paths are static constants (no user input)
-const tlsKeyPath = __dirname + "/artifacts/cert/server.key";
-const tlsCertPath = __dirname + "/artifacts/cert/server.crt";
-
 const httpsOptions = {
-    key: fs.readFileSync(tlsKeyPath),
-    cert: fs.readFileSync(tlsCertPath)
+    key: fs.readFileSync(__dirname + "/artifacts/cert/server.key"),
+    cert: fs.readFileSync(__dirname + "/artifacts/cert/server.crt")
 };
 
 MongoClient.connect(db, (err, db) => {
