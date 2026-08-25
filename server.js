@@ -22,11 +22,15 @@ const https = require("https");
 const path = require("path");
 
 function safeCertPath(filename) {
+    const ALLOWED_CERT_FILES = ["server.key", "server.crt"];
     if (typeof filename !== "string" || filename.indexOf("\0") !== -1) {
         throw new Error("Invalid certificate filename");
     }
+    if (ALLOWED_CERT_FILES.indexOf(filename) === -1) {
+        throw new Error("Certificate filename not in allowlist");
+    }
     const certDir = path.resolve(__dirname, "./artifacts/cert");
-    const resolved = path.resolve(certDir, filename);
+    const resolved = path.join(certDir, filename);
     if (!resolved.startsWith(certDir + path.sep)) {
         throw new Error("Certificate path escapes allowed directory");
     }
