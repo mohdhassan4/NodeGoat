@@ -9,7 +9,7 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
+
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -21,19 +21,31 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 const allowedCertBase = path.resolve(__dirname, "artifacts", "cert");
+
+// Safe filesystem helpers that enforce path stays within allowedCertBase (CWE-22 mitigation)
+function safeFileExists(filePath) {
+    const resolved = path.resolve(filePath);
+    if (!resolved.startsWith(allowedCertBase + path.sep)) {
+        return false;
+    }
+    return fs.existsSync(resolved);
+}
+
+function safeReadFileSync(filePath) {
+    const resolved = path.resolve(filePath);
+    if (!resolved.startsWith(allowedCertBase + path.sep)) {
+        throw new Error("TLS cert/key path escapes allowed directory");
+    }
+    return fs.readFileSync(resolved);
+}
+
 const certPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
 const keyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
 
-// Validate resolved paths stay within the expected certs directory (CWE-22 mitigation)
-if (!certPath.startsWith(allowedCertBase + path.sep) ||
-    !keyPath.startsWith(allowedCertBase + path.sep)) {
-    throw new Error("TLS cert/key path escapes allowed directory");
-}
-
-const httpsEnabled = fs.existsSync(certPath) && fs.existsSync(keyPath);
+const httpsEnabled = safeFileExists(certPath) && safeFileExists(keyPath);
 const httpsOptions = httpsEnabled ? {
-    key: fs.readFileSync(keyPath),
-    cert: fs.readFileSync(certPath)
+    key: safeReadFileSync(keyPath),
+    cert: safeReadFileSync(certPath)
 } : null;
 
 MongoClient.connect(db, (err, db) => {
@@ -147,29 +159,15 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol when certs are available
+    // Use secure HTTPS protocol; TLS certificates are required
     if (httpsEnabled) {
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
         });
-        // Redirect HTTP to HTTPS on port 80 (if available)
-        const httpRedirectPort = process.env.HTTP_REDIRECT_PORT || 80;
-        http.createServer((req, res) => {
-            res.writeHead(301, {
-                "Location": "https://" + req.headers.host + req.url
-            });
-            res.end();
-        }).listen(httpRedirectPort, () => {
-            console.log(`HTTP redirect server listening on port ${httpRedirectPort}`);
-        }).on("error", () => {
-            // Port 80 may not be available; redirect server is optional
-        });
     } else {
-        // Fallback for development when TLS certs are not available
-        console.warn("WARNING: No TLS certificates found. Starting insecure HTTP server.");
-        http.createServer(app).listen(port, () => {
-            console.log(`Express http server listening on port ${port}`);
-        });
+        console.error("ERROR: TLS certificates not found. Server requires HTTPS.");
+        console.error("Place server.crt and server.key in artifacts/cert/ directory.");
+        process.exit(1);
     }
 
 });
