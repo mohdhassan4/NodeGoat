@@ -88,23 +88,17 @@ MongoClient.connect(db, (err, db) => {
         saveUninitialized: true,
         resave: true,
         cookie: {
+            httpOnly: true,
+            secure: true,
             domain: process.env.SESSION_COOKIE_DOMAIN || undefined,
-            path: "/"
+            path: "/",
+            maxAge: 2 * 60 * 60 * 1000,
+            expires: new Date(Date.now() + 2 * 60 * 60 * 1000)
         }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
         key: "sessionId",
-        */
-
-        /*
-        // Fix for A3 - XSS
-        // TODO: Add "maxAge"
-        cookie: {
-            httpOnly: true
-            // Remember to start an HTTPS server to get this working
-            // secure: true
-        }
         */
 
     }));
