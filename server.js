@@ -15,17 +15,28 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
 // Fix for A6-Sensitive Data Exposure
 // Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+
+function safeCertPath(filename) {
+    if (typeof filename !== "string" || filename.indexOf("\0") !== -1) {
+        throw new Error("Invalid certificate filename");
+    }
+    const certDir = path.resolve(__dirname, "./artifacts/cert");
+    const resolved = path.resolve(certDir, filename);
+    if (!resolved.startsWith(certDir + path.sep)) {
+        throw new Error("Certificate path escapes allowed directory");
+    }
+    return resolved;
+}
+
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    key: fs.readFileSync(safeCertPath("server.key")),
+    cert: fs.readFileSync(safeCertPath("server.crt"))
 };
-*/
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
