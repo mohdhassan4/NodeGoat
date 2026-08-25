@@ -91,7 +91,8 @@ MongoClient.connect(db, (err, db) => {
             httpOnly: true,
             secure: true,
             domain: process.env.COOKIE_DOMAIN || "localhost",
-            maxAge: 2 * 60 * 60 * 1000
+            maxAge: 2 * 60 * 60 * 1000,
+            expires: new Date(Date.now() + 2 * 60 * 60 * 1000)
         }
     }));
 
