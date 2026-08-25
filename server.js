@@ -22,6 +22,14 @@ const https = require("https");
 const path = require("path");
 const tlsKeyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
 const tlsCertPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
+const allowedCertBase = path.resolve(__dirname, "./artifacts/cert");
+
+// Validate that a resolved path is within the allowed base directory to prevent path traversal
+function isWithinAllowedBase(filePath, baseDir) {
+    var realBase = fs.existsSync(baseDir) ? fs.realpathSync(baseDir) : baseDir;
+    var normalized = path.normalize(filePath);
+    return normalized.startsWith(realBase + path.sep) || normalized === realBase;
+}
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -142,7 +150,10 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Use secure HTTPS protocol when TLS certs are available; fall back to HTTP otherwise
-    if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
+    // Validate paths are within the allowed certificate directory before filesystem access
+    if (isWithinAllowedBase(tlsKeyPath, allowedCertBase) &&
+        isWithinAllowedBase(tlsCertPath, allowedCertBase) &&
+        fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
         const httpsOptions = {
             key: fs.readFileSync(tlsKeyPath),
             cert: fs.readFileSync(tlsCertPath)
