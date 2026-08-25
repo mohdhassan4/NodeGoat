@@ -167,10 +167,18 @@ MongoClient.connect(db, (err, db) => {
         var tlsKeyPath = validateTlsFilePath(tlsKeyPathRaw, tlsBaseDir);
     } catch (pathErr) {
         console.error("TLS path validation failed: " + pathErr.message);
-        console.warn("Falling back to HTTP due to invalid TLS paths.");
-        http.createServer(app).listen(port, () => {
-            console.log(`Express http server listening on port ${port}`);
-        });
+        if (process.env.ALLOW_HTTP === "true") {
+            console.warn("ALLOW_HTTP=true: starting HTTP server despite invalid TLS paths.");
+            http.createServer(app).listen(port, () => {
+                console.log(`Express http server listening on port ${port}`);
+            });
+        } else {
+            console.error(
+                "Cannot start server without valid TLS configuration. " +
+                "Set ALLOW_HTTP=true to allow HTTP in development."
+            );
+            process.exit(1);
+        }
         return;
     }
 
@@ -183,13 +191,21 @@ MongoClient.connect(db, (err, db) => {
             console.log(`Express https server listening on port ${port}`);
         });
     } else {
-        console.warn(
-            "TLS cert/key not found. Falling back to HTTP. " +
-            "Set TLS_CERT_PATH and TLS_KEY_PATH for HTTPS."
-        );
-        http.createServer(app).listen(port, () => {
-            console.log(`Express http server listening on port ${port}`);
-        });
+        if (process.env.ALLOW_HTTP === "true") {
+            console.warn(
+                "ALLOW_HTTP=true: TLS cert/key not found, starting HTTP server. " +
+                "Set TLS_CERT_PATH and TLS_KEY_PATH for HTTPS."
+            );
+            http.createServer(app).listen(port, () => {
+                console.log(`Express http server listening on port ${port}`);
+            });
+        } else {
+            console.error(
+                "TLS cert/key not found and ALLOW_HTTP is not enabled. " +
+                "Provide TLS_CERT_PATH/TLS_KEY_PATH or set ALLOW_HTTP=true for development."
+            );
+            process.exit(1);
+        }
     }
 
 });
