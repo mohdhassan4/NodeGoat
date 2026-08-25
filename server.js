@@ -94,7 +94,7 @@ MongoClient.connect(db, (err, db) => {
         resave: true,
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
-        key: "sessionId",
+        name: "sessionId",
         // Fix for A3 - XSS
         cookie: {
             httpOnly: true,
