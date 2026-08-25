@@ -90,7 +90,8 @@ MongoClient.connect(db, (err, db) => {
         */
         cookie: {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production"
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 2 * 60 * 60 * 1000 // 2 hours session expiration
         }
     }));
 
