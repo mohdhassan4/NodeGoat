@@ -23,7 +23,8 @@ const https = require("https");
 const path = require("path");
 const httpsOptions = {
     key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt")),
+    minVersion: "TLSv1.2"
 };
 */
 
@@ -76,27 +77,25 @@ MongoClient.connect(db, (err, db) => {
 
     // Enable session management using express middleware
     app.use(session({
+        name: "__session",
         // genid: (req) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            httpOnly: true,
+            secure: true,
+            path: "/",
+            maxAge: 2 * 60 * 60 * 1000,
+            domain: process.env.SESSION_COOKIE_DOMAIN || undefined
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
         key: "sessionId",
-        */
-
-        /*
-        // Fix for A3 - XSS
-        // TODO: Add "maxAge"
-        cookie: {
-            httpOnly: true
-            // Remember to start an HTTPS server to get this working
-            // secure: true
-        }
         */
 
     }));
