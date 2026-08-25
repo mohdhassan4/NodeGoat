@@ -68,17 +68,18 @@ MongoClient.connect(db, (err, db) => {
 
     // Enable session management using express middleware
     app.use(session({
-        // genid: (req) => {
-        //    return genuuid() // use UUIDs for session IDs
-        //},
         secret: cookieSecret,
-        // Both mandatory in Express v4
+        name: "sessionId",
         saveUninitialized: true,
         resave: true,
         cookie: {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            maxAge: 7200000
+            secure: true,
+            maxAge: 7200000,
+            expires: new Date(Date.now() + 7200000),
+            path: "/",
+            domain: process.env.COOKIE_DOMAIN || undefined,
+            sameSite: "strict"
         }
     }));
 
