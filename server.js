@@ -85,7 +85,8 @@ MongoClient.connect(db, (err, db) => {
         saveUninitialized: true,
         resave: true,
         cookie: {
-            secure: process.env.NODE_ENV === "production"
+            secure: process.env.NODE_ENV === "production",
+            domain: process.env.COOKIE_DOMAIN || "localhost"
         }
         /*
         // Fix for A5 - Security MisConfig
