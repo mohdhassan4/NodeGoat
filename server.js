@@ -141,6 +141,16 @@ MongoClient.connect(db, (err, db) => {
     const validTlsExtensions = [".pem", ".crt", ".key", ".cert"];
     const validateTlsPath = function(filePath) {
         var resolved = path.resolve(filePath);
+        var allowedDirs = ["/etc/ssl", "/etc/pki", "/etc/letsencrypt", process.cwd()];
+        if (process.env.TLS_CERT_DIR) {
+            allowedDirs.push(path.resolve(process.env.TLS_CERT_DIR));
+        }
+        var isAllowed = allowedDirs.some((dir) =>
+            resolved.startsWith(dir + path.sep) || resolved === dir
+        );
+        if (!isAllowed) {
+            throw new Error("TLS path outside allowed directories: " + resolved);
+        }
         var ext = path.extname(resolved).toLowerCase();
         if (validTlsExtensions.indexOf(ext) === -1) {
             throw new Error("Invalid TLS file extension: " + ext);
