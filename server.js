@@ -9,7 +9,6 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const marked = require("marked");
@@ -122,19 +121,13 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Use HTTPS when local TLS certificate artifacts are available
-    if (fs.existsSync("./artifacts/cert/server.key") && fs.existsSync("./artifacts/cert/server.crt")) {
-        var httpsOptions = {
-            key: fs.readFileSync("./artifacts/cert/server.key"),
-            cert: fs.readFileSync("./artifacts/cert/server.crt")
-        };
-        https.createServer(httpsOptions, app).listen(port, () => {
-            console.log("Express https server listening on port " + port);
-        });
-    } else {
-        http.createServer(app).listen(port, () => {
-            console.log("Express http server listening on port " + port);
-        });
-    }
+    // Always use HTTPS with bundled self-signed certificate
+    var httpsOptions = {
+        key: fs.readFileSync("./artifacts/cert/server.key"),
+        cert: fs.readFileSync("./artifacts/cert/server.crt")
+    };
+    https.createServer(httpsOptions, app).listen(port, () => {
+        console.log("Express https server listening on port " + port);
+    });
 
 });
