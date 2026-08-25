@@ -91,7 +91,8 @@ MongoClient.connect(db, (err, db) => {
         // Fix for A3 - XSS
         cookie: {
             httpOnly: true,
-            secure: true
+            secure: true,
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000)
         }
 
     }));
