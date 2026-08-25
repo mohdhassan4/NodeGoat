@@ -21,25 +21,13 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 
-function safeCertPath(filename) {
-    const ALLOWED_CERT_FILES = ["server.key", "server.crt"];
-    if (typeof filename !== "string" || filename.indexOf("\0") !== -1) {
-        throw new Error("Invalid certificate filename");
-    }
-    if (ALLOWED_CERT_FILES.indexOf(filename) === -1) {
-        throw new Error("Certificate filename not in allowlist");
-    }
-    const certDir = path.resolve(__dirname, "./artifacts/cert");
-    const resolved = path.join(certDir, filename);
-    if (!resolved.startsWith(certDir + path.sep)) {
-        throw new Error("Certificate path escapes allowed directory");
-    }
-    return resolved;
-}
+// Certificate paths use only literal path segments to prevent path traversal (CWE-22)
+const certKeyPath = path.join(__dirname, "artifacts", "cert", "server.key");
+const certCrtPath = path.join(__dirname, "artifacts", "cert", "server.crt");
 
 const httpsOptions = {
-    key: fs.readFileSync(safeCertPath("server.key")),
-    cert: fs.readFileSync(safeCertPath("server.crt"))
+    key: fs.readFileSync(certKeyPath),
+    cert: fs.readFileSync(certCrtPath)
 };
 
 MongoClient.connect(db, (err, db) => {
@@ -104,6 +92,7 @@ MongoClient.connect(db, (err, db) => {
             secure: true,
             domain: process.env.SESSION_DOMAIN || "localhost",
             maxAge: 24 * 60 * 60 * 1000,
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
             path: "/"
         }
         /*
