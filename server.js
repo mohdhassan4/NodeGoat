@@ -21,9 +21,18 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+const certBaseDir = path.resolve(__dirname, "artifacts", "cert");
+const keyFilePath = path.resolve(certBaseDir, "server.key");
+const certFilePath = path.resolve(certBaseDir, "server.crt");
+if (!keyFilePath.startsWith(certBaseDir + path.sep)) {
+    throw new Error("Invalid key file path: path traversal detected");
+}
+if (!certFilePath.startsWith(certBaseDir + path.sep)) {
+    throw new Error("Invalid cert file path: path traversal detected");
+}
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    key: fs.readFileSync(keyFilePath),
+    cert: fs.readFileSync(certFilePath)
 };
 */
 
