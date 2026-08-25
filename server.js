@@ -15,17 +15,34 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
-// Fix for A6-Sensitive Data Exposure
-// Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
+
+const tlsBaseDir = path.resolve(
+    process.env.TLS_BASE_DIR || path.join(__dirname, "artifacts", "cert")
+);
+
+function loadTlsFile(filePath, baseDir) {
+    if (filePath.indexOf("..") !== -1) {
+        throw new Error(
+            "TLS file path contains traversal sequence: " + filePath
+        );
+    }
+    var resolvedPath = path.isAbsolute(filePath)
+        ? path.normalize(filePath)
+        : path.resolve(baseDir, filePath);
+    if (!resolvedPath.startsWith(baseDir + path.sep) &&
+        resolvedPath !== baseDir) {
+        throw new Error(
+            "TLS file path outside allowed directory: " + resolvedPath
+        );
+    }
+    if (!fs.existsSync(resolvedPath)) {
+        return null;
+    }
+    return fs.readFileSync(resolvedPath);
+}
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -80,9 +97,19 @@ MongoClient.connect(db, (err, db) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
         secret: cookieSecret,
+        // Use generic cookie name to avoid fingerprinting
+        name: "id",
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            httpOnly: true,
+            secure: true,
+            domain: process.env.COOKIE_DOMAIN || "localhost",
+            path: "/",
+            maxAge: 2 * 60 * 60 * 1000,
+            expires: new Date(Date.now() + 2 * 60 * 60 * 1000)
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
@@ -141,17 +168,57 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
+    // Use HTTPS when TLS cert and key are available, fall back to HTTP otherwise
+    const tlsCertPathRaw = process.env.TLS_CERT_PATH ||
+        path.resolve(__dirname, "./artifacts/cert/server.crt");
+    const tlsKeyPathRaw = process.env.TLS_KEY_PATH ||
+        path.resolve(__dirname, "./artifacts/cert/server.key");
 
-    /*
-    // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    var tlsCertData, tlsKeyData;
+    try {
+        tlsCertData = loadTlsFile(tlsCertPathRaw, tlsBaseDir);
+        tlsKeyData = loadTlsFile(tlsKeyPathRaw, tlsBaseDir);
+    } catch (pathErr) {
+        console.error("TLS path validation failed: " + pathErr.message);
+        if (process.env.ALLOW_HTTP === "true") {
+            console.warn("ALLOW_HTTP=true: starting HTTP server despite invalid TLS paths.");
+            http.createServer(app).listen(port, () => {
+                console.log(`Express http server listening on port ${port}`);
+            });
+        } else {
+            console.error(
+                "Cannot start server without valid TLS configuration. " +
+                "Set ALLOW_HTTP=true to allow HTTP in development."
+            );
+            process.exit(1);
+        }
+        return;
+    }
+
+    if (tlsCertData && tlsKeyData) {
+        var httpsOptions = {
+            key: tlsKeyData,
+            cert: tlsCertData
+        };
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        if (process.env.ALLOW_HTTP === "true") {
+            console.warn(
+                "ALLOW_HTTP=true: TLS cert/key not found, starting HTTP server. " +
+                "Set TLS_CERT_PATH and TLS_KEY_PATH for HTTPS."
+            );
+            http.createServer(app).listen(port, () => {
+                console.log(`Express http server listening on port ${port}`);
+            });
+        } else {
+            console.error(
+                "TLS cert/key not found and ALLOW_HTTP is not enabled. " +
+                "Provide TLS_CERT_PATH/TLS_KEY_PATH or set ALLOW_HTTP=true for development."
+            );
+            process.exit(1);
+        }
+    }
 
 });
