@@ -4,7 +4,7 @@ const express = require("express");
 const favicon = require("serve-favicon");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-// const csrf = require('csurf');
+const csrf = require("csurf");
 const consolidate = require("consolidate"); // Templating library adapter for Express
 const swig = require("swig");
 // const helmet = require("helmet");
@@ -15,17 +15,35 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
 // Fix for A6-Sensitive Data Exposure
 // Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
+
+// Path traversal prevention: resolve and validate TLS paths within project root
+const baseDir = path.resolve(__dirname);
+const tlsKeyPath = path.resolve(baseDir, process.env.TLS_KEY_PATH || "./artifacts/cert/server.key");
+const tlsCertPath = path.resolve(baseDir, process.env.TLS_CERT_PATH || "./artifacts/cert/server.crt");
+
+function isWithinBaseDir(filePath) {
+    var normalized = path.normalize(filePath);
+    return normalized.startsWith(baseDir + path.sep) || normalized === baseDir;
+}
+
+var httpsOptions = null;
+if (isWithinBaseDir(tlsKeyPath) && isWithinBaseDir(tlsCertPath)) {
+    const safeTlsKeyPath = path.resolve(tlsKeyPath);
+    const safeTlsCertPath = path.resolve(tlsCertPath);
+    if (fs.existsSync(safeTlsKeyPath) && fs.existsSync(safeTlsCertPath)) {
+        httpsOptions = {
+            key: fs.readFileSync(safeTlsKeyPath),
+            cert: fs.readFileSync(safeTlsCertPath)
+        };
+    }
+} else {
+    console.error("TLS paths resolve outside the allowed base directory. HTTPS disabled.");
+}
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -82,26 +100,19 @@ MongoClient.connect(db, (err, db) => {
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
-        /*
+        resave: true,
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
-        key: "sessionId",
-        */
-
-        /*
-        // Fix for A3 - XSS
-        // TODO: Add "maxAge"
+        name: "sessionId",
+        // Fix for A3 - XSS and target cookie security
         cookie: {
-            httpOnly: true
-            // Remember to start an HTTPS server to get this working
-            // secure: true
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: parseInt(process.env.SESSION_MAX_AGE, 10) || 7200000,
+            path: "/"
         }
-        */
-
     }));
 
-    /*
     // Fix for A8 - CSRF
     // Enable Express csrf protection
     app.use(csrf());
@@ -110,7 +121,6 @@ MongoClient.connect(db, (err, db) => {
         res.locals.csrftoken = req.csrfToken();
         next();
     });
-    */
 
     // Register templating engine
     app.engine(".html", consolidate.swig);
@@ -141,17 +151,21 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-
-    /*
-    // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    // Use secure HTTPS protocol when certs are available
+    if (httpsOptions) {
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else if (process.env.NODE_ENV === "production") {
+        // In production, refuse to start without TLS - enforce HTTPS-only
+        console.error("FATAL: TLS certificates not available. HTTPS is required in production.");
+        console.error("Set TLS_KEY_PATH and TLS_CERT_PATH to valid certificate files.");
+        process.exit(1);
+    } else {
+        // Fallback to HTTP only in non-production environments (local development)
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port} (non-production, HTTP only)`);
+        });
+    }
 
 });
