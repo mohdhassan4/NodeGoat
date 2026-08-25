@@ -18,22 +18,20 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const allowedCertDir = path.resolve(__dirname, "artifacts", "cert") + path.sep;
+const certFiles = {
+    "server.key": path.resolve(__dirname, "artifacts", "cert", "server.key"),
+    "server.crt": path.resolve(__dirname, "artifacts", "cert", "server.crt")
+};
 
-function readCertFile(filename) {
-    if (typeof filename !== "string" || filename.indexOf("\0") !== -1) {
-        throw new Error("Invalid certificate filename");
+function readCertFile(name) {
+    var resolved = certFiles[name];
+    if (!resolved) {
+        throw new Error("Unknown certificate file: only server.key and server.crt are allowed");
     }
-    if (filename.indexOf("..") !== -1 ||
-        filename.indexOf(path.sep) !== -1 ||
-        filename.indexOf("/") !== -1) {
-        throw new Error("Certificate filename must not contain path separators or traversal");
+    if (!fs.existsSync(resolved)) {
+        throw new Error("Certificate file not found: " + name);
     }
-    var filePath = path.join(allowedCertDir, filename);
-    if (!fs.existsSync(filePath)) {
-        throw new Error("Certificate file not found: " + filename);
-    }
-    return fs.readFileSync(filePath);
+    return fs.readFileSync(resolved);
 }
 
 MongoClient.connect(db, (err, db) => {
@@ -151,7 +149,7 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Require HTTPS — refuse to start without TLS certificates
-    // readCertFile validates filename has no traversal and reads from allowedCertDir
+    // readCertFile uses a strict allowlist of certificate file paths
     try {
         const httpsOptions = {
             key: readCertFile("server.key"),
