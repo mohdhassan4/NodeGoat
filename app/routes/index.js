@@ -68,9 +68,12 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
+        const ALLOWED_REDIRECTS = [
+            "/tutorial", "/dashboard", "/benefits", "/memos",
+            "/research", "/contributions", "/profile"
+        ];
         const url = req.query.url;
-        // Only allow relative paths; reject protocol-relative and absolute URLs
-        if (url && url.startsWith("/") && !url.startsWith("//")) {
+        if (url && ALLOWED_REDIRECTS.includes(url.split("?")[0])) {
             return res.redirect(url);
         }
         return res.redirect("/");
