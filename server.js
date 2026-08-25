@@ -15,17 +15,9 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
-// Fix for A6-Sensitive Data Exposure
-// Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -76,29 +68,19 @@ MongoClient.connect(db, (err, db) => {
 
     // Enable session management using express middleware
     app.use(session({
-        // genid: (req) => {
-        //    return genuuid() // use UUIDs for session IDs
-        //},
         secret: cookieSecret,
-        // Both mandatory in Express v4
+        name: "sessionId",
         saveUninitialized: true,
-        resave: true
-        /*
-        // Fix for A5 - Security MisConfig
-        // Use generic cookie name
-        key: "sessionId",
-        */
-
-        /*
-        // Fix for A3 - XSS
-        // TODO: Add "maxAge"
+        resave: true,
         cookie: {
-            httpOnly: true
-            // Remember to start an HTTPS server to get this working
-            // secure: true
+            httpOnly: true,
+            secure: true,
+            maxAge: 7200000,
+            expires: new Date(Date.now() + 7200000),
+            path: "/",
+            domain: process.env.COOKIE_DOMAIN || undefined,
+            sameSite: "strict"
         }
-        */
-
     }));
 
     /*
@@ -141,17 +123,39 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
+    // Load TLS material from environment or default file paths
+    const tlsKeyPath = process.env.TLS_KEY_PATH
+        || path.resolve(__dirname, "./artifacts/cert/server.key");
+    const tlsCertPath = process.env.TLS_CERT_PATH
+        || path.resolve(__dirname, "./artifacts/cert/server.crt");
 
-    /*
-    // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    function safeReadTlsFile(filePath, basePath) {
+        var resolved = path.normalize(path.resolve(filePath));
+        if (!resolved.startsWith(basePath)) {
+            return null;
+        }
+        var ext = path.extname(resolved).toLowerCase();
+        if ([".key", ".crt", ".pem", ".cert"].indexOf(ext) === -1) {
+            return null;
+        }
+        if (!fs.existsSync(resolved)) {
+            return null;
+        }
+        return fs.readFileSync(resolved);
+    }
+
+    var tlsBasePath = path.normalize(path.resolve(__dirname));
+    const tlsKey = safeReadTlsFile(tlsKeyPath, tlsBasePath);
+    const tlsCert = safeReadTlsFile(tlsCertPath, tlsBasePath);
+
+    if (tlsKey && tlsCert) {
+        https.createServer({ key: tlsKey, cert: tlsCert }, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port} (TLS not configured)`);
+        });
+    }
 
 });
