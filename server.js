@@ -15,17 +15,30 @@ const marked = require("marked");
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
 // Fix for A6-Sensitive Data Exposure
 // Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
+
+// Validate that a TLS file path is safe (no path traversal).
+// Resolved path must stay within the allowed base directory.
+const allowedTlsBaseDir = path.resolve(__dirname);
+
+function validateTlsPath(filePath) {
+    const resolved = path.resolve(__dirname, filePath);
+    const normalized = path.normalize(resolved);
+    if (normalized.indexOf("..") !== -1) {
+        throw new Error("TLS path contains traversal sequence: " + filePath);
+    }
+    if (!normalized.startsWith(allowedTlsBaseDir + path.sep) && normalized !== allowedTlsBaseDir) {
+        throw new Error("TLS path escapes allowed base directory: " + filePath);
+    }
+    return normalized;
+}
+
+const tlsKeyPath = validateTlsPath(process.env.TLS_KEY_PATH || "./artifacts/cert/server.key");
+const tlsCertPath = validateTlsPath(process.env.TLS_CERT_PATH || "./artifacts/cert/server.crt");
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -136,20 +149,23 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // HTTP connection bound to localhost only to mitigate cleartext exposure.
-    // Use HTTPS (see commented block below) for production deployments.
-    const httpHost = "127.0.0.1";
-    http.createServer(app).listen(port, httpHost, () => {
-        console.log(`Express http server listening on ${httpHost}:${port}`);
-        console.warn("WARNING: Server is using HTTP (cleartext). Use HTTPS in production.");
-    });
-
-    /*
     // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    // Use secure HTTPS protocol when TLS cert/key files are available
+    if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
+        const httpsOptions = {
+            key: fs.readFileSync(tlsKeyPath),
+            cert: fs.readFileSync(tlsCertPath)
+        };
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        // HTTP fallback bound to localhost only to mitigate cleartext exposure.
+        const httpHost = "127.0.0.1";
+        http.createServer(app).listen(port, httpHost, () => {
+            console.log(`Express http server listening on ${httpHost}:${port}`);
+            console.warn("WARNING: Server is using HTTP (cleartext). Use HTTPS in production.");
+        });
+    }
 
 });
