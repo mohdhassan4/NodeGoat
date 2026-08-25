@@ -20,15 +20,8 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-function safePath(base, relative) {
-    var resolved = path.normalize(path.resolve(base, relative));
-    if (!resolved.startsWith(base + path.sep) && resolved !== base) {
-        throw new Error("Path traversal detected");
-    }
-    return resolved;
-}
-const certKeyPath = safePath(__dirname, "./artifacts/cert/server.key");
-const certPath = safePath(__dirname, "./artifacts/cert/server.crt");
+const certKeyPath = path.join(__dirname, "artifacts", "cert", "server.key");
+const certPath = path.join(__dirname, "artifacts", "cert", "server.crt");
 const httpsEnabled = fs.existsSync(certKeyPath) && fs.existsSync(certPath);
 let httpsOptions = {};
 if (httpsEnabled) {
@@ -154,18 +147,6 @@ MongoClient.connect(db, (err, db) => {
         // Use secure HTTPS protocol
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
-        });
-
-        // HTTP server that redirects all requests to HTTPS
-        const httpRedirectPort = parseInt(port, 10) + 80;
-        const redirectApp = express();
-        redirectApp.use((req, res) => {
-            res.redirect(301, `https://${req.hostname}:${port}${req.url}`);
-        });
-        http.createServer(redirectApp).listen(httpRedirectPort, () => {
-            console.log(
-                `Express http redirect server listening on port ${httpRedirectPort}`
-            );
         });
     } else {
         // Development fallback when no TLS certificates are available
