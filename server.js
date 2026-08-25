@@ -90,6 +90,7 @@ MongoClient.connect(db, (err, db) => {
         cookie: {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
+            maxAge: parseInt(process.env.SESSION_MAX_AGE, 10) || 7200000,
             path: "/"
         }
     }));
