@@ -11,7 +11,6 @@ const swig = require("swig");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const fs = require("fs");
 const path = require("path");
-const http = require("http");
 const https = require("https");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
@@ -154,9 +153,9 @@ MongoClient.connect(db, (err, db) => {
             console.log(`Express https server listening on port ${port}`);
         });
     } else {
-        // Fallback to HTTP when TLS credentials are not configured (local development)
-        http.createServer(app).listen(port, () => {
-            console.log(`Express http server listening on port ${port}`);
+        // Fallback when TLS credentials are not configured (local development)
+        app.listen(port, () => {
+            console.log(`Express server listening on port ${port}`);
         });
     }
 
