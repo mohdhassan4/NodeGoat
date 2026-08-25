@@ -19,10 +19,11 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 // Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
-const path = require("path");
+const KEY_PATH = __dirname + "/artifacts/cert/server.key";
+const CERT_PATH = __dirname + "/artifacts/cert/server.crt";
 const tlsAvailable =
-    fs.existsSync(path.join(__dirname, "artifacts", "cert", "server.key")) &&
-    fs.existsSync(path.join(__dirname, "artifacts", "cert", "server.crt"));
+    fs.existsSync(KEY_PATH) &&
+    fs.existsSync(CERT_PATH);
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -144,8 +145,8 @@ MongoClient.connect(db, (err, db) => {
     // Start HTTPS server (TLS required)
     if (tlsAvailable) {
         const httpsOptions = {
-            key: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.key")),
-            cert: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.crt"))
+            key: fs.readFileSync(KEY_PATH),
+            cert: fs.readFileSync(CERT_PATH)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
