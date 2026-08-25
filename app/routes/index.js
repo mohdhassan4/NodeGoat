@@ -68,7 +68,7 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        var targetUrl = req.query.url;
+        const targetUrl = req.query.url;
         // Only allow relative paths that start with a single slash
         // Reject protocol-relative URLs (//), absolute URLs, and other schemes
         if (typeof targetUrl === "string" && targetUrl.startsWith("/") && !targetUrl.startsWith("//")) {
