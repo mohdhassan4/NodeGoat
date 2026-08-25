@@ -12,6 +12,7 @@ const index = (app, db) => {
 
     "use strict";
 
+    const url = require("url");
     const sessionHandler = new SessionHandler(db);
     const profileHandler = new ProfileHandler(db);
     const benefitsHandler = new BenefitsHandler(db);
@@ -68,8 +69,12 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Insecure way to handle redirects by taking redirect url from query string
-        return res.redirect(req.query.url);
+        // Parse the URL to extract only the pathname, rejecting any protocol or host
+        const parsed = url.parse(req.query.url || "");
+        if (parsed.pathname && !parsed.protocol && !parsed.host && parsed.pathname.startsWith("/")) {
+            return res.redirect(parsed.pathname);
+        }
+        return res.redirect("/");
     });
 
     // Research Page

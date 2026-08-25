@@ -1,11 +1,23 @@
+"use strict";
+
 const _ = require("underscore");
-const path = require("path");
 const util = require("util");
 
 const finalEnv = process.env.NODE_ENV || "development";
 
-const allConf = require(path.resolve(__dirname + "/../config/env/all.js"));
-const envConf = require(path.resolve(__dirname + "/../config/env/" + finalEnv.toLowerCase() + ".js")) || {};
+const envConfigs = {
+    "all": require("./env/all.js"),
+    "development": require("./env/development.js"),
+    "production": require("./env/production.js"),
+    "test": require("./env/test.js")
+};
+
+const allConf = envConfigs.all;
+const envName = finalEnv.toLowerCase();
+if (!envConfigs.hasOwnProperty(envName) || envName === "all") {
+    throw new Error("Invalid environment: " + envName);
+}
+const envConf = envConfigs[envName] || {};
 
 const config = { ...allConf, ...envConf };
 
