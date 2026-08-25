@@ -88,6 +88,7 @@ MongoClient.connect(db, (err, db) => {
         name: "__app_sid",
         // Fix for A3 - XSS and cookie domain restriction
         cookie: {
+            path: "/",
             httpOnly: true,
             secure: true,
             domain: process.env.SESSION_COOKIE_DOMAIN || undefined
