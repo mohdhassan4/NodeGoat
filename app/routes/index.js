@@ -1,3 +1,4 @@
+const url = require("url");
 const SessionHandler = require("./session");
 const ProfileHandler = require("./profile");
 const BenefitsHandler = require("./benefits");
@@ -68,10 +69,10 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        const redirectUrl = req.query.url;
-        // Only allow relative paths that do not escape to an external host
-        if (redirectUrl && redirectUrl.startsWith("/") && !redirectUrl.startsWith("//")) {
-            return res.redirect(redirectUrl);
+        // Parse the URL to extract only the pathname, rejecting any protocol or host
+        const parsed = url.parse(req.query.url || "");
+        if (parsed.pathname && !parsed.protocol && !parsed.host && parsed.pathname.startsWith("/")) {
+            return res.redirect(parsed.pathname);
         }
         return res.redirect("/");
     });
