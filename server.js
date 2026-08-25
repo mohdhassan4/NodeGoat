@@ -4,28 +4,29 @@ const express = require("express");
 const favicon = require("serve-favicon");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-// const csrf = require('csurf');
+const csrf = require('csurf');
 const consolidate = require("consolidate"); // Templating library adapter for Express
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
+const https = require("https");
+const fs = require("fs");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
-// Fix for A6-Sensitive Data Exposure
+
 // Load keys for establishing secure HTTPS connection
-const fs = require("fs");
-const https = require("https");
-const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
+let httpsOptions = null;
+try {
+    httpsOptions = {
+        key: fs.readFileSync(__dirname + "/artifacts/cert/server.key"),
+        cert: fs.readFileSync(__dirname + "/artifacts/cert/server.crt")
+    };
+} catch (e) {
+    console.log("TLS certs not found, server will exit");
+}
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -82,7 +83,11 @@ MongoClient.connect(db, (err, db) => {
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            secure: true,
+            expires: new Date(Date.now() + (parseInt(process.env.SESSION_MAX_AGE) || 2 * 60 * 60 * 1000))
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
@@ -101,7 +106,6 @@ MongoClient.connect(db, (err, db) => {
 
     }));
 
-    /*
     // Fix for A8 - CSRF
     // Enable Express csrf protection
     app.use(csrf());
@@ -110,7 +114,6 @@ MongoClient.connect(db, (err, db) => {
         res.locals.csrftoken = req.csrfToken();
         next();
     });
-    */
 
     // Register templating engine
     app.engine(".html", consolidate.swig);
@@ -141,17 +144,14 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
+    // Require HTTPS — do not fall back to insecure HTTP
+    if (!httpsOptions) {
+        console.error("TLS certificates not found. Cannot start server without HTTPS.");
+        process.exit(1);
+    }
+    const server = https.createServer(httpsOptions, app);
+    server.listen(port, () => {
+        console.log(`Express https server listening on port ${port}`);
     });
-
-    /*
-    // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
 
 });
