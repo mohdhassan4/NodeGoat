@@ -5,7 +5,12 @@ const util = require("util");
 const finalEnv = process.env.NODE_ENV || "development";
 
 const allConf = require(path.resolve(__dirname + "/../config/env/all.js"));
-const envConf = require(path.resolve(__dirname + "/../config/env/" + finalEnv.toLowerCase() + ".js")) || {};
+const validEnvs = ["development", "production", "test"];
+const envName = finalEnv.toLowerCase();
+if (!validEnvs.includes(envName)) {
+    throw new Error("Invalid environment: " + envName);
+}
+const envConf = require(path.resolve(__dirname, "..", "config", "env", envName + ".js")) || {};
 
 const config = { ...allConf, ...envConf };
 
