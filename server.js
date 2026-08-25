@@ -128,8 +128,11 @@ MongoClient.connect(db, (err, db) => {
     const tlsCertPath = process.env.TLS_CERT_PATH
         || path.resolve(__dirname, "./artifacts/cert/server.crt");
 
-    function safeReadTlsFile(filePath) {
-        var resolved = path.resolve(filePath);
+    function safeReadTlsFile(filePath, basePath) {
+        var resolved = path.normalize(path.resolve(filePath));
+        if (!resolved.startsWith(basePath)) {
+            return null;
+        }
         var ext = path.extname(resolved).toLowerCase();
         if ([".key", ".crt", ".pem", ".cert"].indexOf(ext) === -1) {
             return null;
@@ -140,8 +143,9 @@ MongoClient.connect(db, (err, db) => {
         return fs.readFileSync(resolved);
     }
 
-    const tlsKey = safeReadTlsFile(tlsKeyPath);
-    const tlsCert = safeReadTlsFile(tlsCertPath);
+    var tlsBasePath = path.normalize(path.resolve(__dirname));
+    const tlsKey = safeReadTlsFile(tlsKeyPath, tlsBasePath);
+    const tlsCert = safeReadTlsFile(tlsCertPath, tlsBasePath);
 
     if (tlsKey && tlsCert) {
         https.createServer({ key: tlsKey, cert: tlsCert }, app).listen(port, () => {
