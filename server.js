@@ -104,6 +104,7 @@ MongoClient.connect(db, (err, db) => {
         resave: true,
         cookie: {
             httpOnly: true,
+            path: "/",
             domain: process.env.SESSION_COOKIE_DOMAIN || undefined
         }
         /*
