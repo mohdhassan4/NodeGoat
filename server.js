@@ -22,8 +22,9 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    // Load TLS key from environment variable or external file path (never hardcoded)
+    key: process.env.TLS_KEY || fs.readFileSync(process.env.TLS_KEY_PATH || path.resolve(__dirname, "./artifacts/cert/server.key")),
+    cert: process.env.TLS_CERT || fs.readFileSync(process.env.TLS_CERT_PATH || path.resolve(__dirname, "./artifacts/cert/server.crt"))
 };
 */
 
