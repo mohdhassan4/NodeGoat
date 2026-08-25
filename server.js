@@ -20,9 +20,24 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+
+const allowedCertDir = path.resolve(__dirname, "artifacts", "cert");
+
+function readCertFile(relativePath) {
+    var resolved = path.resolve(__dirname, relativePath);
+    var normalized = path.normalize(resolved);
+    if (!normalized.startsWith(allowedCertDir + path.sep) && normalized !== allowedCertDir) {
+        throw new Error("Certificate path is outside the allowed directory: " + normalized);
+    }
+    return fs.readFileSync(normalized);
+}
+
+var keyPath = path.join("artifacts", "cert", "server.key");
+var certPath = path.join("artifacts", "cert", "server.crt");
+
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    key: readCertFile(keyPath),
+    cert: readCertFile(certPath)
 };
 
 MongoClient.connect(db, (err, db) => {
