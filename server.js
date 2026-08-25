@@ -20,21 +20,9 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 
-// Validate TLS file paths to prevent path traversal (CWE-22)
-const allowedTlsDir = path.resolve(__dirname, "artifacts", "cert");
-function validateTlsPath(filePath) {
-    var resolved = path.resolve(allowedTlsDir, filePath);
-    var normalized = path.normalize(resolved);
-    if (normalized.indexOf(allowedTlsDir + path.sep) !== 0 &&
-        normalized !== allowedTlsDir) {
-        throw new Error("TLS path escapes allowed directory: " + filePath);
-    }
-    return normalized;
-}
-
 const httpsOptions = {
-    key: fs.readFileSync(validateTlsPath("server.key")),
-    cert: fs.readFileSync(validateTlsPath("server.crt"))
+    key: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.key")),
+    cert: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.crt"))
 };
 
 MongoClient.connect(db, (err, db) => {
