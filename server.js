@@ -12,6 +12,7 @@ const MongoClient = require("mongodb").MongoClient; // Driver for connecting to 
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -131,10 +132,14 @@ MongoClient.connect(db, (err, db) => {
     const tlsKeyPath = process.env.TLS_KEY_PATH;
     const tlsCertPath = process.env.TLS_CERT_PATH;
 
-    if (tlsKeyPath && tlsCertPath && fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
+    // Resolve and validate TLS file paths to prevent path traversal
+    const resolvedKeyPath = tlsKeyPath ? path.resolve(tlsKeyPath) : null;
+    const resolvedCertPath = tlsCertPath ? path.resolve(tlsCertPath) : null;
+
+    if (resolvedKeyPath && resolvedCertPath && path.isAbsolute(resolvedKeyPath) && path.isAbsolute(resolvedCertPath) && fs.existsSync(resolvedKeyPath) && fs.existsSync(resolvedCertPath)) {
         const httpsOptions = {
-            key: fs.readFileSync(tlsKeyPath),
-            cert: fs.readFileSync(tlsCertPath)
+            key: fs.readFileSync(resolvedKeyPath),
+            cert: fs.readFileSync(resolvedCertPath)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
