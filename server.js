@@ -19,20 +19,19 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 // Load keys for establishing secure HTTPS connection
 const fs = require("fs");
 const https = require("https");
-const path = require("path");
-const certDir = path.resolve(__dirname, "artifacts", "cert");
-const certPath = path.normalize(path.resolve(certDir, "server.crt"));
-const keyPath = path.normalize(path.resolve(certDir, "server.key"));
+const certDir = __dirname + "/artifacts/cert";
+const certPath = certDir + "/server.crt";
+const keyPath = certDir + "/server.key";
 
 // Validate resolved paths remain within the expected certificate directory
-if (!certPath.startsWith(certDir + path.sep)) {
+if (!certPath.startsWith(certDir + "/")) {
     throw new Error("Certificate path resolves outside allowed directory");
 }
-if (!keyPath.startsWith(certDir + path.sep)) {
+if (!keyPath.startsWith(certDir + "/")) {
     throw new Error("Key path resolves outside allowed directory");
 }
-const tlsEnabled = fs.existsSync(path.join(__dirname, "artifacts", "cert", "server.key")) &&
-    fs.existsSync(path.join(__dirname, "artifacts", "cert", "server.crt"));
+const tlsEnabled = fs.existsSync(keyPath) &&
+    fs.existsSync(certPath);
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -153,8 +152,8 @@ MongoClient.connect(db, (err, db) => {
     // Prefer HTTPS when TLS certificates are available
     if (tlsEnabled) {
         const httpsOptions = {
-            key: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.key")),
-            cert: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.crt"))
+            key: fs.readFileSync(keyPath),
+            cert: fs.readFileSync(certPath)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
