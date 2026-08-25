@@ -19,6 +19,23 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 
+const tlsBaseDir = path.resolve(
+    process.env.TLS_BASE_DIR || path.join(__dirname, "artifacts", "cert")
+);
+
+function validateTlsFilePath(filePath, baseDir) {
+    var resolvedPath = path.isAbsolute(filePath)
+        ? path.normalize(filePath)
+        : path.resolve(baseDir, filePath);
+    if (!resolvedPath.startsWith(baseDir + path.sep) &&
+        resolvedPath !== baseDir) {
+        throw new Error(
+            "TLS file path outside allowed directory: " + resolvedPath
+        );
+    }
+    return resolvedPath;
+}
+
 MongoClient.connect(db, (err, db) => {
     if (err) {
         console.log("Error: DB: connect");
@@ -137,10 +154,22 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Use HTTPS when TLS cert and key are available, fall back to HTTP otherwise
-    const tlsCertPath = process.env.TLS_CERT_PATH ||
+    const tlsCertPathRaw = process.env.TLS_CERT_PATH ||
         path.resolve(__dirname, "./artifacts/cert/server.crt");
-    const tlsKeyPath = process.env.TLS_KEY_PATH ||
+    const tlsKeyPathRaw = process.env.TLS_KEY_PATH ||
         path.resolve(__dirname, "./artifacts/cert/server.key");
+
+    try {
+        var tlsCertPath = validateTlsFilePath(tlsCertPathRaw, tlsBaseDir);
+        var tlsKeyPath = validateTlsFilePath(tlsKeyPathRaw, tlsBaseDir);
+    } catch (pathErr) {
+        console.error("TLS path validation failed: " + pathErr.message);
+        console.warn("Falling back to HTTP due to invalid TLS paths.");
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port}`);
+        });
+        return;
+    }
 
     if (fs.existsSync(tlsCertPath) && fs.existsSync(tlsKeyPath)) {
         const httpsOptions = {
