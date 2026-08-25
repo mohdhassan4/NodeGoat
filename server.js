@@ -11,7 +11,6 @@ const swig = require("swig");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const https = require("https");
 const fs = require("fs");
-const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -22,8 +21,8 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 let httpsOptions = null;
 try {
     httpsOptions = {
-        key: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.key")),
-        cert: fs.readFileSync(path.join(__dirname, "artifacts", "cert", "server.crt"))
+        key: fs.readFileSync(__dirname + "/artifacts/cert/server.key"),
+        cert: fs.readFileSync(__dirname + "/artifacts/cert/server.crt")
     };
 } catch (e) {
     console.log("TLS certs not found, server will exit");
