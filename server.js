@@ -11,7 +11,6 @@ const swig = require("swig");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const crypto = require("crypto");
 const https = require("https");
-const fs = require("fs");
 const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
@@ -239,30 +238,15 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Use HTTPS with file-based certs or a self-signed certificate
-    var httpsOptions;
-    var tlsKeyPath = path.join(__dirname, "artifacts", "cert", "server.key");
-    var tlsCertPath = path.join(__dirname, "artifacts", "cert", "server.crt");
+    // Always use HTTPS with generated self-signed certificate
+    var ephemeral = generateSelfSignedCert();
+    var httpsOptions = {
+        key: ephemeral.key,
+        cert: ephemeral.cert
+    };
 
-    if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
-        httpsOptions = {
-            key: fs.readFileSync(tlsKeyPath),
-            cert: fs.readFileSync(tlsCertPath)
-        };
-    } else {
-        // Generate ephemeral self-signed cert for development
-        var ephemeral = generateSelfSignedCert();
-        httpsOptions = {
-            key: ephemeral.key,
-            cert: ephemeral.cert
-        };
-        console.warn(
-            "Using auto-generated self-signed certificate."
-        );
-    }
-
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express https server listening on port ${port}`);
+    https.createServer(httpsOptions, app).listen(port, function() {
+        console.log("Express https server listening on port " + port);
     });
 
 });
