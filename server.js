@@ -129,8 +129,23 @@ MongoClient.connect(db, (err, db) => {
 
     // Fix for A6-Sensitive Data Exposure
     // Use secure HTTPS protocol when TLS certs are available
+    const allowedCertsDir = path.resolve(__dirname, "./artifacts/cert");
     const certPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
     const keyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
+
+    // Path traversal guard: ensure resolved paths are within the allowed certs directory
+    const certInBounds = certPath.startsWith(allowedCertsDir + path.sep) ||
+        certPath === allowedCertsDir;
+    const keyInBounds = keyPath.startsWith(allowedCertsDir + path.sep) ||
+        keyPath === allowedCertsDir;
+
+    if (!certInBounds || !keyInBounds) {
+        console.error(
+            "Error: TLS cert/key paths resolve outside the allowed directory. " +
+            "Refusing to load."
+        );
+        process.exit(1);
+    }
 
     if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
         const httpsOptions = {
