@@ -89,6 +89,7 @@ MongoClient.connect(db, (err, db) => {
         // Both mandatory in Express v4
         saveUninitialized: true,
         resave: true,
+        name: "sessionId",
         cookie: {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
