@@ -20,8 +20,15 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const certKeyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
-const certPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
+function safePath(base, relative) {
+    var resolved = path.normalize(path.resolve(base, relative));
+    if (!resolved.startsWith(base + path.sep) && resolved !== base) {
+        throw new Error("Path traversal detected");
+    }
+    return resolved;
+}
+const certKeyPath = safePath(__dirname, "./artifacts/cert/server.key");
+const certPath = safePath(__dirname, "./artifacts/cert/server.crt");
 const httpsEnabled = fs.existsSync(certKeyPath) && fs.existsSync(certPath);
 let httpsOptions = {};
 if (httpsEnabled) {
