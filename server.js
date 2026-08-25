@@ -4,28 +4,20 @@ const express = require("express");
 const favicon = require("serve-favicon");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-// const csrf = require('csurf');
+const csrf = require("csurf");
 const consolidate = require("consolidate"); // Templating library adapter for Express
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
-// Fix for A6-Sensitive Data Exposure
-// Load keys for establishing secure HTTPS connection
-const fs = require("fs");
-const https = require("https");
-const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -79,10 +71,18 @@ MongoClient.connect(db, (err, db) => {
         // genid: (req) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
+        name: "sessionId",
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            domain: process.env.APP_DOMAIN || "localhost",
+            maxAge: 24 * 60 * 60 * 1000,
+            path: "/"
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
@@ -101,7 +101,6 @@ MongoClient.connect(db, (err, db) => {
 
     }));
 
-    /*
     // Fix for A8 - CSRF
     // Enable Express csrf protection
     app.use(csrf());
@@ -110,7 +109,6 @@ MongoClient.connect(db, (err, db) => {
         res.locals.csrftoken = req.csrfToken();
         next();
     });
-    */
 
     // Register templating engine
     app.engine(".html", consolidate.swig);
@@ -141,17 +139,48 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
+    // Use HTTPS when TLS key and cert are available, fall back to HTTP otherwise
+    // Canonicalize TLS paths to prevent path traversal
+    const tlsKeyPath = process.env.TLS_KEY_PATH ?
+        path.resolve(process.env.TLS_KEY_PATH) :
+        path.resolve(__dirname, "./artifacts/cert/server.key");
+    const tlsCertPath = process.env.TLS_CERT_PATH ?
+        path.resolve(process.env.TLS_CERT_PATH) :
+        path.resolve(__dirname, "./artifacts/cert/server.crt");
 
-    /*
-    // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    // Validate resolved paths are absolute and do not contain traversal
+    if (!path.isAbsolute(tlsKeyPath) || tlsKeyPath.indexOf("\0") !== -1) {
+        throw new Error("Invalid TLS key path");
+    }
+    if (!path.isAbsolute(tlsCertPath) || tlsCertPath.indexOf("\0") !== -1) {
+        throw new Error("Invalid TLS cert path");
+    }
+
+    var httpsStarted = false;
+    if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
+        try {
+            const httpsOptions = {
+                key: fs.readFileSync(tlsKeyPath),
+                cert: fs.readFileSync(tlsCertPath)
+            };
+            https.createServer(httpsOptions, app).listen(port, () => {
+                console.log(`Express https server listening on port ${port}`);
+            });
+            httpsStarted = true;
+        } catch (e) {
+            console.warn("TLS key/cert invalid: " + e.message);
+        }
+    }
+    if (!httpsStarted && process.env.NODE_ENV !== "production") {
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port}`);
+        });
+    } else if (!httpsStarted) {
+        console.error(
+            "HTTPS is required in production. " +
+            "Set TLS_KEY_PATH and TLS_CERT_PATH environment variables."
+        );
+        process.exit(1);
+    }
 
 });
