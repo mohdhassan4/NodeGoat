@@ -21,28 +21,23 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 
-// Validate cert paths to prevent path traversal
-const certsBaseDir = path.resolve(__dirname, "artifacts", "cert");
-const keyFile = process.env.SSL_KEY_FILE || "server.key";
-const certFile = process.env.SSL_CERT_FILE || "server.crt";
-const keyPath = path.normalize(path.resolve(certsBaseDir, keyFile));
-const certPath = path.normalize(path.resolve(certsBaseDir, certFile));
+// Validate cert paths to prevent path traversal (CWE-22)
+const certsBaseDir = path.join(__dirname, "artifacts", "cert");
+const keyFile = path.basename(process.env.SSL_KEY_FILE || "server.key");
+const certFile = path.basename(process.env.SSL_CERT_FILE || "server.crt");
 
 let httpsOptions = null;
-if (
-    keyPath.startsWith(certsBaseDir + path.sep) &&
-    certPath.startsWith(certsBaseDir + path.sep)
-) {
-    if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+if (/^[\w.\-]+$/.test(keyFile) && /^[\w.\-]+$/.test(certFile)) {
+    const keyFullPath = path.join(certsBaseDir, keyFile);
+    const certFullPath = path.join(certsBaseDir, certFile);
+    if (fs.existsSync(keyFullPath) && fs.existsSync(certFullPath)) {
         httpsOptions = {
-            key: fs.readFileSync(keyPath),
-            cert: fs.readFileSync(certPath)
+            key: fs.readFileSync(keyFullPath),
+            cert: fs.readFileSync(certFullPath)
         };
     }
 } else {
-    console.error(
-        "Certificate paths resolve outside the allowed directory"
-    );
+    console.error("Invalid certificate filename");
 }
 
 MongoClient.connect(db, (err, db) => {
@@ -103,6 +98,7 @@ MongoClient.connect(db, (err, db) => {
         saveUninitialized: true,
         resave: true,
         cookie: {
+            httpOnly: true,
             secure: true,
             domain: process.env.DOMAIN || "localhost",
             expires: new Date(Date.now() + 2 * 60 * 60 * 1000),
