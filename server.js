@@ -154,13 +154,23 @@ MongoClient.connect(db, (err, db) => {
 
     // Use HTTPS when TLS certificates are available
     if (process.env.TLS_KEY_PATH && process.env.TLS_CERT_PATH) {
-        var httpsOptions = {
-            key: fs.readFileSync(path.resolve(__dirname, process.env.TLS_KEY_PATH)),
-            cert: fs.readFileSync(path.resolve(__dirname, process.env.TLS_CERT_PATH))
-        };
-        https.createServer(httpsOptions, app).listen(port, () => {
-            console.log(`Express https server listening on port ${port}`);
-        });
+        var certDir = path.resolve(__dirname) + path.sep;
+        var keyPath = path.normalize(path.resolve(__dirname, process.env.TLS_KEY_PATH));
+        var certPath = path.normalize(path.resolve(__dirname, process.env.TLS_CERT_PATH));
+        if (!keyPath.startsWith(certDir) || !certPath.startsWith(certDir)) {
+            console.warn("WARNING: TLS paths escape base directory. Falling back to HTTP (insecure).");
+            http.createServer(app).listen(port, () => {
+                console.log(`Express http server listening on port ${port}`);
+            });
+        } else {
+            var httpsOptions = {
+                key: fs.readFileSync(keyPath),
+                cert: fs.readFileSync(certPath)
+            };
+            https.createServer(httpsOptions, app).listen(port, () => {
+                console.log(`Express https server listening on port ${port}`);
+            });
+        }
     } else {
         console.warn("WARNING: TLS_KEY_PATH and TLS_CERT_PATH not set. Falling back to HTTP (insecure).");
         http.createServer(app).listen(port, () => {
