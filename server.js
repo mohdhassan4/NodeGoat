@@ -21,13 +21,18 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 
-const basePath = path.resolve(__dirname);
-const certPath = path.normalize(path.resolve(__dirname, "artifacts", "cert", "server.crt"));
-const keyPath = path.normalize(path.resolve(__dirname, "artifacts", "cert", "server.key"));
-// Validate resolved paths remain within the project root to prevent path traversal
-if (!certPath.startsWith(basePath + path.sep) || !keyPath.startsWith(basePath + path.sep)) {
-    throw new Error("Invalid certificate path detected");
+// Helper: resolve path segments under a base directory, preventing path traversal
+function safePath(base, ...segments) {
+    const resolved = path.normalize(path.resolve(base, ...segments));
+    if (!resolved.startsWith(base + path.sep) && resolved !== base) {
+        throw new Error("Invalid path: traversal detected");
+    }
+    return resolved;
 }
+
+const basePath = path.resolve(__dirname);
+const certPath = safePath(basePath, "artifacts", "cert", "server.crt");
+const keyPath = safePath(basePath, "artifacts", "cert", "server.key");
 const tlsAvailable = fs.existsSync(certPath) && fs.existsSync(keyPath);
 let httpsOptions = null;
 if (tlsAvailable) {
@@ -158,19 +163,8 @@ MongoClient.connect(db, (err, db) => {
     // Fix for A6-Sensitive Data Exposure
     // Use secure HTTPS protocol when TLS certificates are available
     if (httpsOptions) {
-        const httpsPort = port;
-        const httpRedirectPort = parseInt(port, 10) + 80; // e.g. 4080 for redirect
-        https.createServer(httpsOptions, app).listen(httpsPort, () => {
-            console.log(`Express https server listening on port ${httpsPort}`);
-        });
-        // Start HTTP server only to redirect to HTTPS
-        const redirectApp = express();
-        redirectApp.use((req, res) => {
-            const host = req.headers.host ? req.headers.host.replace(/:\d+$/, "") : "localhost";
-            res.redirect(301, `https://${host}:${httpsPort}${req.url}`);
-        });
-        http.createServer(redirectApp).listen(httpRedirectPort, () => {
-            console.log(`Express http redirect server listening on port ${httpRedirectPort}, redirecting to HTTPS`);
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
         });
     } else {
         // Fallback: no TLS certificates available — start HTTP with security warning
