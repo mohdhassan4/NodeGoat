@@ -76,6 +76,7 @@ MongoClient.connect(db, (err, db) => {
 
     // Enable session management using express middleware
     app.use(session({
+        name: "sessionId",
         // genid: (req) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
