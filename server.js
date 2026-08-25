@@ -136,9 +136,12 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
+    // HTTP connection bound to localhost only to mitigate cleartext exposure.
+    // Use HTTPS (see commented block below) for production deployments.
+    const httpHost = "127.0.0.1";
+    http.createServer(app).listen(port, httpHost, () => {
+        console.log(`Express http server listening on ${httpHost}:${port}`);
+        console.warn("WARNING: Server is using HTTP (cleartext). Use HTTPS in production.");
     });
 
     /*
