@@ -20,30 +20,9 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 
 // Fix for A6-Sensitive Data Exposure
 // Load keys for establishing secure HTTPS connection if available
-const allowedCertDirs = [
-    path.resolve(__dirname, "./artifacts/cert"),
-    "/etc/ssl/certs",
-    "/etc/ssl/private"
-];
-
-function isValidCertPath(inputPath) {
-    var resolved = path.resolve(inputPath);
-    return allowedCertDirs.some(function(dir) {
-        return resolved.startsWith(dir + path.sep) || resolved === dir;
-    });
-}
-
-const certPath = path.resolve(
-    process.env.SSL_CERT_PATH ||
-    path.resolve(__dirname, "./artifacts/cert/server.crt")
-);
-const keyPath = path.resolve(
-    process.env.SSL_KEY_PATH ||
-    path.resolve(__dirname, "./artifacts/cert/server.key")
-);
-const certsAvailable = isValidCertPath(certPath) &&
-    isValidCertPath(keyPath) &&
-    fs.existsSync(certPath) && fs.existsSync(keyPath);
+const certPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
+const keyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
+const certsAvailable = fs.existsSync(certPath) && fs.existsSync(keyPath);
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
