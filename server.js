@@ -142,7 +142,19 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
+    // Guard against insecure HTTP in production
+    if (process.env.NODE_ENV === "production") {
+        console.error(
+            "ERROR: HTTP is not allowed in production. " +
+            "Configure HTTPS certificates and enable the https server."
+        );
+        process.exit(1);
+    }
+
+    console.warn(
+        "WARNING: Starting server over insecure HTTP. " +
+        "Do not use this in production. Configure HTTPS for secure transport."
+    );
     http.createServer(app).listen(port, () => {
         console.log(`Express http server listening on port ${port}`);
     });
