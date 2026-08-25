@@ -10,22 +10,14 @@ const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
+const https = require("https");
+const fs = require("fs");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
-// Fix for A6-Sensitive Data Exposure
-// Load keys for establishing secure HTTPS connection
-const fs = require("fs");
-const https = require("https");
-const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
+// TLS key/cert paths are loaded from environment variables TLS_KEY_PATH and TLS_CERT_PATH at server start
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -135,17 +127,23 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
+    // Use HTTPS when TLS key and cert are available via environment variables
+    const tlsKeyPath = process.env.TLS_KEY_PATH;
+    const tlsCertPath = process.env.TLS_CERT_PATH;
 
-    /*
-    // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    if (tlsKeyPath && tlsCertPath && fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
+        const httpsOptions = {
+            key: fs.readFileSync(tlsKeyPath),
+            cert: fs.readFileSync(tlsCertPath)
+        };
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        console.warn("TLS_KEY_PATH or TLS_CERT_PATH not set or files not found, falling back to HTTP");
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port}`);
+        });
+    }
 
 });
