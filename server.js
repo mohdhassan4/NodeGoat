@@ -9,7 +9,6 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
@@ -147,19 +146,20 @@ MongoClient.connect(db, (err, db) => {
         process.exit(1);
     }
 
-    if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-        const httpsOptions = {
-            key: fs.readFileSync(keyPath),
-            cert: fs.readFileSync(certPath)
-        };
-        https.createServer(httpsOptions, app).listen(port, () => {
-            console.log(`Express https server listening on port ${port}`);
-        });
-    } else {
-        console.warn("TLS certificates not found; falling back to HTTP. Set up certs for production use.");
-        http.createServer(app).listen(port, () => {
-            console.log(`Express http server listening on port ${port}`);
-        });
+    if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
+        console.error(
+            "Error: TLS certificates not found at " + allowedCertsDir + ". " +
+            "Cannot start without valid TLS configuration."
+        );
+        process.exit(1);
     }
+
+    const httpsOptions = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath)
+    };
+    https.createServer(httpsOptions, app).listen(port, () => {
+        console.log(`Express https server listening on port ${port}`);
+    });
 
 });
