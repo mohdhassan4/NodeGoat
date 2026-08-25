@@ -20,8 +20,17 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const certPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
-const keyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
+const certDir = path.resolve(__dirname, "artifacts", "cert");
+const certPath = path.normalize(path.resolve(certDir, "server.crt"));
+const keyPath = path.normalize(path.resolve(certDir, "server.key"));
+
+// Validate resolved paths remain within the expected certificate directory
+if (!certPath.startsWith(certDir + path.sep)) {
+    throw new Error("Certificate path resolves outside allowed directory");
+}
+if (!keyPath.startsWith(certDir + path.sep)) {
+    throw new Error("Key path resolves outside allowed directory");
+}
 const tlsEnabled = fs.existsSync(keyPath) && fs.existsSync(certPath);
 
 MongoClient.connect(db, (err, db) => {
