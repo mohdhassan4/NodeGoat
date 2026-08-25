@@ -72,11 +72,9 @@ const index = (app, db) => {
             "/tutorial", "/dashboard", "/benefits", "/memos",
             "/research", "/contributions", "/profile"
         ];
-        const url = req.query.url;
-        if (url && ALLOWED_REDIRECTS.includes(url.split("?")[0])) {
-            return res.redirect(url);
-        }
-        return res.redirect("/");
+        const requested = req.query.url;
+        const target = ALLOWED_REDIRECTS.find((allowed) => requested === allowed);
+        return res.redirect(target || "/");
     });
 
     // Research Page
