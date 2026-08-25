@@ -10,22 +10,29 @@ const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
-// Fix for A6-Sensitive Data Exposure
+
 // Load keys for establishing secure HTTPS connection
-const fs = require("fs");
-const https = require("https");
-const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
+let httpsOptions = null;
+try {
+    const keyPath = process.env.TLS_KEY_PATH ||
+        path.resolve(__dirname, "./artifacts/cert/server.key");
+    const certPath = process.env.TLS_CERT_PATH ||
+        path.resolve(__dirname, "./artifacts/cert/server.crt");
+    httpsOptions = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath)
+    };
+} catch (e) {
+    console.log("TLS certs not found, falling back to HTTP");
+}
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -143,17 +150,13 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
+    // Use HTTPS when TLS certs are available, fall back to HTTP otherwise
+    const server = httpsOptions
+        ? https.createServer(httpsOptions, app)
+        : http.createServer(app);
+    server.listen(port, () => {
+        const protocol = httpsOptions ? "https" : "http";
+        console.log(`Express ${protocol} server listening on port ${port}`);
     });
-
-    /*
-    // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
 
 });
