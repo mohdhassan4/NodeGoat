@@ -9,7 +9,6 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
@@ -28,7 +27,9 @@ try {
         cert: fs.readFileSync(tlsCertPath)
     };
 } catch (err) {
-    console.warn("TLS certificates not found; HTTPS unavailable. Set TLS_KEY_PATH and TLS_CERT_PATH.");
+    console.error("FATAL: TLS certificates not found. Set TLS_KEY_PATH and TLS_CERT_PATH environment variables.");
+    console.error("The server requires HTTPS and cannot start without valid TLS certificates.");
+    process.exit(1);
 }
 
 MongoClient.connect(db, (err, db) => {
@@ -140,16 +141,9 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Use HTTPS when TLS certificates are available; fall back to HTTP otherwise
-    if (httpsOptions) {
-        https.createServer(httpsOptions, app).listen(port, () => {
-            console.log(`Express https server listening on port ${port}`);
-        });
-    } else {
-        console.warn("Starting without TLS — provide TLS_KEY_PATH and TLS_CERT_PATH for HTTPS.");
-        http.createServer(app).listen(port, () => {
-            console.log(`Express http server listening on port ${port}`);
-        });
-    }
+    // Start HTTPS server (TLS is mandatory; app exits above if certs are missing)
+    https.createServer(httpsOptions, app).listen(port, () => {
+        console.log(`Express https server listening on port ${port}`);
+    });
 
 });
