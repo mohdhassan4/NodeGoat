@@ -17,4 +17,29 @@ describe("/learn behaviour", () => {
     cy.visitPage("/learn?url=/dashboard");
     cy.url().should("include", "dashboard");
   });
+
+  it("Should block open redirect to non-allowlisted external URLs", () => {
+    cy.userSignIn();
+    cy.visitPage("/learn?url=http://evil.com");
+    cy.url().should("not.include", "evil.com");
+    cy.url().should("match", /\/$/);
+  });
+
+  it("Should block protocol-relative redirect", () => {
+    cy.userSignIn();
+    cy.visitPage("/learn?url=//evil.com");
+    cy.url().should("not.include", "evil.com");
+    cy.url().should("match", /\/$/);
+  });
+
+  it("Should allow redirect to allowlisted host", () => {
+    cy.userSignIn();
+    cy.request({
+      url: "/learn?url=https://www.khanacademy.org/test",
+      followRedirect: false
+    }).then((resp) => {
+      expect(resp.status).to.eq(302);
+      expect(resp.headers.location).to.include("www.khanacademy.org");
+    });
+  });
 });
