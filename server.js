@@ -31,6 +31,10 @@ MongoClient.connect(db, (err, db) => {
     }
     console.log(`Connected to the database`);
 
+    // Fix for A5 - Security MisConfig
+    // Remove default x-powered-by response header
+    app.disable("x-powered-by");
+
     /*
     // Fix for A5 - Security MisConfig
     // TODO: Review the rest of helmet options, like "xssFilter"
