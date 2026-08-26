@@ -12,10 +12,11 @@ function MemosDAO(db) {
 
     const memosCol = db.collection("memos");
 
-    this.insert = (memo, callback) => {
+    this.insert = (userId, memo, callback) => {
 
-        // Create allocations document
+        // Create memo document scoped to the authenticated user
         const memos = {
+            visibleTo: userId,
             memo,
             timestamp: new Date()
         };
@@ -23,9 +24,11 @@ function MemosDAO(db) {
         memosCol.insert(memos, (err, result) => !err ? callback(null, result) : callback(err, null));
     };
 
-    this.getAllMemos = (callback) => {
+    this.getMemosByUserId = (userId, callback) => {
 
-        memosCol.find({}).sort({
+        memosCol.find({
+            visibleTo: userId
+        }).sort({
             timestamp: -1
         }).toArray((err, memos) => {
             if (err) return callback(err, null);

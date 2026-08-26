@@ -9,8 +9,11 @@ function MemosHandler(db) {
     const memosDAO = new MemosDAO(db);
 
     this.addMemos = (req, res, next) => {
+        const {
+            userId
+        } = req.session;
 
-        memosDAO.insert(req.body.memo, (err, docs) => {
+        memosDAO.insert(userId, req.body.memo, (err, docs) => {
             if (err) return next(err);
             this.displayMemos(req, res, next);
         });
@@ -22,7 +25,7 @@ function MemosHandler(db) {
             userId
         } = req.session;
 
-        memosDAO.getAllMemos((err, docs) => {
+        memosDAO.getMemosByUserId(userId, (err, docs) => {
             if (err) return next(err);
             return res.render("memos", {
                 memosList: docs,
