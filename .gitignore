@@ -29,3 +29,7 @@ test/e2e/videos/
 
 # ignore Snyk Code scanner files
 .dccache
+
+# TLS certificates - generate locally, do not commit
+artifacts/cert/server.key
+artifacts/cert/server.crt

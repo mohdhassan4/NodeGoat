@@ -67,9 +67,33 @@ const index = (app, db) => {
     app.post("/memos", isLoggedIn, memosHandler.addMemos);
 
     // Handle redirect for learning resources link
+    // Uses an allowlist (switch) so user input never flows into res.redirect
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Insecure way to handle redirects by taking redirect url from query string
-        return res.redirect(req.query.url);
+        var destination;
+        switch (req.query.url) {
+            case "dashboard":
+                destination = "/dashboard";
+                break;
+            case "contributions":
+                destination = "/contributions";
+                break;
+            case "memos":
+                destination = "/memos";
+                break;
+            case "research":
+                destination = "/research";
+                break;
+            case "benefits":
+                destination = "/benefits";
+                break;
+            case "allocations":
+                destination = "/allocations";
+                break;
+            default:
+                destination = "/";
+                break;
+        }
+        return res.redirect(destination);
     });
 
     // Research Page
