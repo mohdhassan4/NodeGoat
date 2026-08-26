@@ -86,26 +86,25 @@ function ResearchHandler(db) {
     this.displayResearch = (req, res) => {
 
         if (req.query.symbol) {
-            const url = req.query.url + req.query.symbol;
-            return validateUrl(url, (err) => {
+            var rawUrl = req.query.url;
+            var rawSymbol = req.query.symbol;
+            if (typeof rawUrl !== "string" || typeof rawSymbol !== "string") {
+                return res.status(400).send("<h1>Invalid request parameters</h1>");
+            }
+            var targetUrl = rawUrl + rawSymbol;
+            return validateUrl(targetUrl, (err) => {
                 if (err) {
-                    res.writeHead(400, {"Content-Type": "text/html"});
-                    res.write("<h1>Invalid request: " +
-                        ESAPI.encoder().encodeForHTML(err.message) + "</h1>");
-                    return res.end();
+                    var safeMessage = ESAPI.encoder().encodeForHTML(err.message);
+                    return res.status(400).send("<h1>Invalid request: " + safeMessage + "</h1>");
                 }
-                return needle.get(url, (error, newResponse, body) => {
-                    if (!error && newResponse.statusCode === 200) {
-                        res.writeHead(200, {
-                            "Content-Type": "text/html"
-                        });
-                    }
-                    res.write("<h1>The following is the stock information you requested.</h1>\n\n");
-                    res.write("\n\n");
+                return needle.get(targetUrl, (error, newResponse, body) => {
+                    var safeBody = "";
                     if (body) {
-                        res.write(ESAPI.encoder().encodeForHTML(body.toString()));
+                        safeBody = ESAPI.encoder().encodeForHTML(body.toString());
                     }
-                    return res.end();
+                    var html = "<h1>The following is the stock information you requested.</h1>\n\n" +
+                        safeBody;
+                    return res.status(200).type("html").send(html);
                 });
             });
         }
