@@ -12,28 +12,29 @@ router.get("/", (req, res) => {
     });
 });
 
-const pages = [
-    "a1",
-    "a2",
-    "a3",
-    "a4",
-    "a5",
-    "a6",
-    "a7",
-    "a8",
-    "a9",
-    "a10",
-    "redos",
-    "ssrf"
-];
+const templates = {
+    "a1": "tutorial/a1",
+    "a2": "tutorial/a2",
+    "a3": "tutorial/a3",
+    "a4": "tutorial/a4",
+    "a5": "tutorial/a5",
+    "a6": "tutorial/a6",
+    "a7": "tutorial/a7",
+    "a8": "tutorial/a8",
+    "a9": "tutorial/a9",
+    "a10": "tutorial/a10",
+    "redos": "tutorial/redos",
+    "ssrf": "tutorial/ssrf"
+};
 
 router.get("/:page", (req, res) => {
     "use strict";
     const page = req.params.page;
-    if (!pages.includes(page)) {
+    const templatePath = templates[page];
+    if (!templatePath) {
         return res.status(404).send("Not found");
     }
-    return res.render("tutorial/" + page, {
+    return res.render(templatePath, {
         environmentalScripts
     });
 });
