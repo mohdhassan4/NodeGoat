@@ -4,12 +4,15 @@ const express = require("express");
 const favicon = require("serve-favicon");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-// const csrf = require('csurf');
+const csrf = require("csurf");
 const consolidate = require("consolidate"); // Templating library adapter for Express
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -76,13 +79,21 @@ MongoClient.connect(db, (err, db) => {
 
     // Enable session management using express middleware
     app.use(session({
+        name: "sessionId",
         // genid: (req) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            domain: process.env.APP_DOMAIN || undefined,
+            maxAge: 24 * 60 * 60 * 1000,
+            path: "/"
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
@@ -101,8 +112,6 @@ MongoClient.connect(db, (err, db) => {
 
     }));
 
-    /*
-    // Fix for A8 - CSRF
     // Enable Express csrf protection
     app.use(csrf());
     // Make csrf token available in templates
@@ -110,7 +119,6 @@ MongoClient.connect(db, (err, db) => {
         res.locals.csrftoken = req.csrfToken();
         next();
     });
-    */
 
     // Register templating engine
     app.engine(".html", consolidate.swig);
@@ -141,10 +149,33 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
+    // Use HTTPS when TLS cert/key paths are provided via environment variables
+    const tlsKeyPath = process.env.TLS_KEY_PATH;
+    const tlsCertPath = process.env.TLS_CERT_PATH;
+
+    if (tlsKeyPath && tlsCertPath) {
+        const resolvedKeyPath = path.resolve(__dirname, tlsKeyPath);
+        const resolvedCertPath = path.resolve(__dirname, tlsCertPath);
+        const baseDir = __dirname + path.sep;
+        if (!resolvedKeyPath.startsWith(baseDir)) {
+            throw new Error("TLS key path escapes application directory");
+        }
+        if (!resolvedCertPath.startsWith(baseDir)) {
+            throw new Error("TLS cert path escapes application directory");
+        }
+        const httpsOptions = {
+            key: fs.readFileSync(resolvedKeyPath),
+            cert: fs.readFileSync(resolvedCertPath)
+        };
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        // HTTP fallback for development when no TLS certs are configured
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port}`);
+        });
+    }
 
     /*
     // Fix for A6-Sensitive Data Exposure
