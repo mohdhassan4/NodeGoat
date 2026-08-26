@@ -64,8 +64,15 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Insecure way to handle redirects by taking redirect url from query string
-        return res.redirect(req.query.url);
+        var redirectUrl = req.query.url;
+        // Only allow relative paths starting with a single slash
+        if (typeof redirectUrl === "string" &&
+            redirectUrl.charAt(0) === "/" &&
+            redirectUrl.charAt(1) !== "/" &&
+            redirectUrl.charAt(1) !== "\\") {
+            return res.redirect(redirectUrl);
+        }
+        return res.redirect("/dashboard");
     });
 
     // Research Page
