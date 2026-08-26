@@ -33,8 +33,8 @@ var state = {
     error: null
 };
 
-var sutUserName = "user1";
-var sutUserPassword = "User1_123";
+var sutUserName = process.env.SUT_USER_NAME || "user1";
+var sutUserPassword = process.env.SUT_USER_PASSWORD || "change-me"; // TODO: rotate - secret was in version control
 
 chrome.setDefaultService(service);
 

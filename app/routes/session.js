@@ -58,7 +58,7 @@ function SessionHandler(db) {
         userDAO.validateLogin(userName, password, (err, user) => {
             const errorMessage = "Invalid username and/or password";
             const invalidUserNameErrorMessage = "Invalid username";
-            const invalidPasswordErrorMessage = "Invalid password";
+            const invalidPasswordErrorMessage = "Invalid password"; // not a secret - user-facing error message
             if (err) {
                 if (err.noSuchUser) {
                     console.log("Error: attempt to login with invalid user: ", userName);
@@ -169,7 +169,7 @@ function SessionHandler(db) {
             return false;
         }
         if (!LNAME_RE.test(lastName)) {
-            errors.lastNameError = "Invalid last name.";
+            errors.lastNameError = "Invalid last name."; // not a secret - user-facing validation error
             return false;
         }
         if (!PASS_RE.test(password)) {
