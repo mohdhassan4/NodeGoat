@@ -3,14 +3,26 @@ const {
     environmentalScripts
 } = require("../../config/config");
 
+// Sanitize HTML to prevent stored XSS
+function sanitizeHtml(input) {
+    if (typeof input !== "string") return "";
+    return input
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#x27;");
+}
+
 function MemosHandler(db) {
     "use strict";
 
     const memosDAO = new MemosDAO(db);
 
     this.addMemos = (req, res, next) => {
+        const sanitizedMemo = sanitizeHtml(req.body.memo);
 
-        memosDAO.insert(req.body.memo, (err, docs) => {
+        memosDAO.insert(sanitizedMemo, (err, docs) => {
             if (err) return next(err);
             this.displayMemos(req, res, next);
         });
