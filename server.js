@@ -10,9 +10,6 @@ const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
-const https = require("https");
-const fs = require("fs");
-const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -122,23 +119,8 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Use HTTPS when TLS cert and key are available; fall back to HTTP for local dev
-    var tlsCertPath = path.join(__dirname, "artifacts/cert/server.crt");
-    var tlsKeyPath = path.join(__dirname, "artifacts/cert/server.key");
-
-    if (fs.existsSync(tlsCertPath) && fs.existsSync(tlsKeyPath)) {
-        var httpsOptions = {
-            key: fs.readFileSync(tlsKeyPath),
-            cert: fs.readFileSync(tlsCertPath)
-        };
-        https.createServer(httpsOptions, app).listen(port, () => {
-            console.log(`Express https server listening on port ${port}`);
-        });
-    } else {
-        console.warn("WARNING: TLS cert/key not found. Starting insecure HTTP server.");
-        http.createServer(app).listen(port, () => {
-            console.log(`Express http server listening on port ${port}`);
-        });
-    }
+    http.createServer(app).listen(port, () => {
+        console.log(`Express http server listening on port ${port}`);
+    });
 
 });
