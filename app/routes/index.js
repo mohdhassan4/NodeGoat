@@ -67,13 +67,33 @@ const index = (app, db) => {
     app.post("/memos", isLoggedIn, memosHandler.addMemos);
 
     // Handle redirect for learning resources link
+    // Uses an allowlist (switch) so user input never flows into res.redirect
     app.get("/learn", isLoggedIn, (req, res) => {
-        var redirectUrl = req.query.url;
-        // Only allow safe relative paths: must start with "/" but not "//" and must not contain "://"
-        if (typeof redirectUrl === "string" && redirectUrl.startsWith("/") && !redirectUrl.startsWith("//") && !redirectUrl.includes("://")) {
-            return res.redirect(redirectUrl);
+        var destination;
+        switch (req.query.url) {
+            case "dashboard":
+                destination = "/dashboard";
+                break;
+            case "contributions":
+                destination = "/contributions";
+                break;
+            case "memos":
+                destination = "/memos";
+                break;
+            case "research":
+                destination = "/research";
+                break;
+            case "benefits":
+                destination = "/benefits";
+                break;
+            case "allocations":
+                destination = "/allocations";
+                break;
+            default:
+                destination = "/";
+                break;
         }
-        return res.redirect("/");
+        return res.redirect(destination);
     });
 
     // Research Page
