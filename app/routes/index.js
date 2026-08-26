@@ -68,13 +68,11 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        var url = req.query.url;
         var allowedPaths = ["/dashboard", "/benefits", "/tutorial", "/memos",
             "/contributions", "/research", "/profile", "/learn", "/allocations"];
-        if (typeof url === "string" && allowedPaths.some(function(p) {
-            return url === p || url.startsWith(p + "/") || url.startsWith(p + "?");
-        })) {
-            return res.redirect(url);
+        var idx = allowedPaths.indexOf(req.query.url);
+        if (idx !== -1) {
+            return res.redirect(allowedPaths[idx]);
         }
         return res.redirect("/");
     });
