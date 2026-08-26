@@ -34,7 +34,7 @@ var state = {
 };
 
 var sutUserName = "user1";
-var sutUserPassword = "User1_123";
+var sutUserPassword = process.env.TEST_USER_PASSWORD || "User1_123"; // credential must be rotated if ever used in production (remains in git history)
 
 chrome.setDefaultService(service);
 

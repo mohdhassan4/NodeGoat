@@ -51,13 +51,9 @@ const index = (app, db) => {
     app.get("/contributions", isLoggedIn, contributionsHandler.displayContributions);
     app.post("/contributions", isLoggedIn, contributionsHandler.handleContributionsUpdate);
 
-    // Benefits Page
-    app.get("/benefits", isLoggedIn, benefitsHandler.displayBenefits);
-    app.post("/benefits", isLoggedIn, benefitsHandler.updateBenefits);
-    /* Fix for A7 - checks user role to implement  Function Level Access Control
-     app.get("/benefits", isLoggedIn, isAdmin, benefitsHandler.displayBenefits);
-     app.post("/benefits", isLoggedIn, isAdmin, benefitsHandler.updateBenefits);
-     */
+    // Benefits Page - checks user role to implement Function Level Access Control
+    app.get("/benefits", isLoggedIn, isAdmin, benefitsHandler.displayBenefits);
+    app.post("/benefits", isLoggedIn, isAdmin, benefitsHandler.updateBenefits);
 
     // Allocations Page
     app.get("/allocations/:userId", isLoggedIn, allocationsHandler.displayAllocations);
@@ -68,8 +64,15 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Insecure way to handle redirects by taking redirect url from query string
-        return res.redirect(req.query.url);
+        var redirectUrl = req.query.url;
+        // Only allow relative paths starting with a single slash
+        if (typeof redirectUrl === "string" &&
+            redirectUrl.charAt(0) === "/" &&
+            redirectUrl.charAt(1) !== "/" &&
+            redirectUrl.charAt(1) !== "\\") {
+            return res.redirect(redirectUrl);
+        }
+        return res.redirect("/dashboard");
     });
 
     // Research Page
