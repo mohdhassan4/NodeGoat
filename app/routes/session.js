@@ -1,8 +1,23 @@
+const crypto = require("crypto");
 const UserDAO = require("../data/user-dao").UserDAO;
 const AllocationsDAO = require("../data/allocations-dao").AllocationsDAO;
 const {
     environmentalScripts
 } = require("../../config/config");
+
+function timingSafeCompare(a, b) {
+    "use strict";
+    if (typeof a !== "string" || typeof b !== "string") {
+        return false;
+    }
+    var bufA = Buffer.from(a);
+    var bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) {
+        crypto.timingSafeEqual(bufA, bufA);
+        return false;
+    }
+    return crypto.timingSafeEqual(bufA, bufB);
+}
 
 /* The SessionHandler must be constructed with a connected db */
 function SessionHandler(db) {
@@ -177,7 +192,7 @@ function SessionHandler(db) {
                 " including numbers, lowercase and uppercase letters.";
             return false;
         }
-        if (password !== verify) {
+        if (!timingSafeCompare(password, verify)) {
             errors.verifyError = "Password must match";
             return false;
         }
