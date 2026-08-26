@@ -14,6 +14,9 @@ function UserDAO(db) {
 
     const usersCol = db.collection("users");
 
+    // Ensure unique index on userName to prevent duplicate registrations (TOCTOU race)
+    usersCol.createIndex({ userName: 1 }, { unique: true });
+
     this.addUser = (userName, firstName, lastName, password, email, callback) => {
 
         // Create user document

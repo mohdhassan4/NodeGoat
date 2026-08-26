@@ -204,7 +204,16 @@ function SessionHandler(db) {
 
                 userDAO.addUser(userName, firstName, lastName, password, email, (err, user) => {
 
-                    if (err) return next(err);
+                    if (err) {
+                        if (err.code === 11000) {
+                            errors.userNameError = "User name already in use. Please choose another";
+                            return res.render("signup", {
+                                ...errors,
+                                environmentalScripts
+                            });
+                        }
+                        return next(err);
+                    }
 
                     //prepare data for the user
                     prepareUserData(user, next);
