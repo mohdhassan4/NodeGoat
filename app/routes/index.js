@@ -67,10 +67,14 @@ const index = (app, db) => {
     app.post("/memos", isLoggedIn, memosHandler.addMemos);
 
     // Handle redirect for learning resources link
+    const ALLOWED_REDIRECT_PATHS = [
+        "/dashboard", "/tutorial", "/benefits", "/memos",
+        "/contributions", "/research", "/profile", "/allocations"
+    ];
     app.get("/learn", isLoggedIn, (req, res) => {
         const url = req.query.url;
-        // Only allow relative paths to prevent open redirect
-        if (url && url.startsWith("/") && !url.startsWith("//")) {
+        // Only allow known internal paths to prevent open redirect
+        if (url && ALLOWED_REDIRECT_PATHS.some(p => url === p || url.startsWith(p + "/"))) {
             return res.redirect(url);
         }
         return res.redirect("/");

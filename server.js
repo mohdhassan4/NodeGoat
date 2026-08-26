@@ -12,6 +12,7 @@ const MongoClient = require("mongodb").MongoClient; // Driver for connecting to 
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -139,9 +140,15 @@ MongoClient.connect(db, (err, db) => {
 
     // Use HTTPS when TLS certificates are available, fall back to HTTP for development
     if (process.env.TLS_CERT && process.env.TLS_KEY) {
+        const tlsBaseDir = path.resolve(__dirname, "artifacts", "cert");
+        const certPath = path.resolve(process.env.TLS_CERT);
+        const keyPath = path.resolve(process.env.TLS_KEY);
+        if (!certPath.startsWith(tlsBaseDir) || !keyPath.startsWith(tlsBaseDir)) {
+            throw new Error("TLS_CERT and TLS_KEY must resolve within " + tlsBaseDir);
+        }
         const options = {
-            cert: fs.readFileSync(process.env.TLS_CERT),
-            key: fs.readFileSync(process.env.TLS_KEY)
+            cert: fs.readFileSync(certPath),
+            key: fs.readFileSync(keyPath)
         };
         https.createServer(options, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
