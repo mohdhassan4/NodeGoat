@@ -12,31 +12,37 @@ router.get("/", (req, res) => {
     });
 });
 
-const templates = {
-    "a1": "tutorial/a1",
-    "a2": "tutorial/a2",
-    "a3": "tutorial/a3",
-    "a4": "tutorial/a4",
-    "a5": "tutorial/a5",
-    "a6": "tutorial/a6",
-    "a7": "tutorial/a7",
-    "a8": "tutorial/a8",
-    "a9": "tutorial/a9",
-    "a10": "tutorial/a10",
-    "redos": "tutorial/redos",
-    "ssrf": "tutorial/ssrf"
-};
-
 router.get("/:page", (req, res) => {
     "use strict";
     const page = req.params.page;
-    const templatePath = templates[page];
-    if (!templatePath) {
+    switch (page) {
+    case "a1":
+        return res.render("tutorial/a1", { environmentalScripts });
+    case "a2":
+        return res.render("tutorial/a2", { environmentalScripts });
+    case "a3":
+        return res.render("tutorial/a3", { environmentalScripts });
+    case "a4":
+        return res.render("tutorial/a4", { environmentalScripts });
+    case "a5":
+        return res.render("tutorial/a5", { environmentalScripts });
+    case "a6":
+        return res.render("tutorial/a6", { environmentalScripts });
+    case "a7":
+        return res.render("tutorial/a7", { environmentalScripts });
+    case "a8":
+        return res.render("tutorial/a8", { environmentalScripts });
+    case "a9":
+        return res.render("tutorial/a9", { environmentalScripts });
+    case "a10":
+        return res.render("tutorial/a10", { environmentalScripts });
+    case "redos":
+        return res.render("tutorial/redos", { environmentalScripts });
+    case "ssrf":
+        return res.render("tutorial/ssrf", { environmentalScripts });
+    default:
         return res.status(404).send("Not found");
     }
-    return res.render(templatePath, {
-        environmentalScripts
-    });
 });
 
 module.exports = router;
