@@ -12,7 +12,7 @@ router.get("/", (req, res) => {
     });
 });
 
-const pages = [
+const allowedPages = new Set([
     "a1",
     "a2",
     "a3",
@@ -25,15 +25,17 @@ const pages = [
     "a10",
     "redos",
     "ssrf"
-];
+]);
 
-for(const page of pages) {
-    router.get(`/${page}`, (req, res) => {
-        "use strict";
-        return res.render(`tutorial/${page}`, {
-            environmentalScripts
-        });
+router.get("/:page", (req, res) => {
+    "use strict";
+    const page = req.params.page;
+    if (!allowedPages.has(page)) {
+        return res.status(404).send("Not Found");
+    }
+    return res.render("tutorial/" + page, {
+        environmentalScripts
     });
-}
+});
 
 module.exports = router;

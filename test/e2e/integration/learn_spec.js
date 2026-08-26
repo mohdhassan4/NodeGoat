@@ -17,4 +17,18 @@ describe("/learn behaviour", () => {
     cy.visitPage("/learn?url=/dashboard");
     cy.url().should("include", "dashboard");
   });
+
+  it("Should block open redirect to external URL", () => {
+    cy.userSignIn();
+    cy.visitPage("/learn?url=http://evil.com");
+    cy.url().should("not.include", "evil.com");
+    cy.url().should("include", "/");
+  });
+
+  it("Should block protocol-relative redirect", () => {
+    cy.userSignIn();
+    cy.visitPage("/learn?url=//evil.com");
+    cy.url().should("not.include", "evil.com");
+    cy.url().should("include", "/");
+  });
 });
