@@ -9,13 +9,6 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
-const marked = require("marked");
-//const nosniff = require('dont-sniff-mimetype');
-const app = express(); // Web framework to handle routing requests
-const routes = require("./app/routes");
-const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
 // Fix for A6-Sensitive Data Exposure
 // Load keys for establishing secure HTTPS connection
 const fs = require("fs");
@@ -25,8 +18,11 @@ const httpsOptions = {
     key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
     cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
 };
-*/
-
+const marked = require("marked");
+//const nosniff = require('dont-sniff-mimetype');
+const app = express(); // Web framework to handle routing requests
+const routes = require("./app/routes");
+const { port, db, cookieSecret } = require("./config/config"); // Application config properties
 MongoClient.connect(db, (err, db) => {
     if (err) {
         console.log("Error: DB: connect");
@@ -34,6 +30,10 @@ MongoClient.connect(db, (err, db) => {
         process.exit(1);
     }
     console.log(`Connected to the database`);
+
+    // Fix for A5 - Security MisConfig
+    // Remove default x-powered-by response header
+    app.disable("x-powered-by");
 
     /*
     // Fix for A5 - Security MisConfig
@@ -68,10 +68,11 @@ MongoClient.connect(db, (err, db) => {
     app.use(favicon(__dirname + "/app/assets/favicon.ico"));
 
     // Express middleware to populate "req.body" so we can access POST variables
-    app.use(bodyParser.json());
+    app.use(bodyParser.json({ limit: "1mb" }));
     app.use(bodyParser.urlencoded({
         // Mandatory in Express v4
-        extended: false
+        extended: false,
+        limit: "1mb"
     }));
 
     // Enable session management using express middleware
@@ -82,13 +83,17 @@ MongoClient.connect(db, (err, db) => {
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
         key: "sessionId",
         */
-
+        cookie: {
+            path: "/",
+            httpOnly: true,
+            secure: true
+        }
         /*
         // Fix for A3 - XSS
         // TODO: Add "maxAge"
@@ -133,25 +138,14 @@ MongoClient.connect(db, (err, db) => {
 
     // Template system setup
     swig.setDefaults({
-        // Autoescape disabled
-        autoescape: false
-        /*
         // Fix for A3 - XSS, enable auto escaping
-        autoescape: true // default value
-        */
+        autoescape: true
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-
-    /*
     // Fix for A6-Sensitive Data Exposure
     // Use secure HTTPS protocol
     https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
+        console.log(`Express https server listening on port ${port}`);
     });
-    */
 
 });

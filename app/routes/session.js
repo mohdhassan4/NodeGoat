@@ -1,8 +1,23 @@
+const crypto = require("crypto");
 const UserDAO = require("../data/user-dao").UserDAO;
 const AllocationsDAO = require("../data/allocations-dao").AllocationsDAO;
 const {
     environmentalScripts
 } = require("../../config/config");
+
+function timingSafeCompare(a, b) {
+    "use strict";
+    if (typeof a !== "string" || typeof b !== "string") {
+        return false;
+    }
+    var bufA = Buffer.from(a);
+    var bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) {
+        crypto.timingSafeEqual(bufA, bufA);
+        return false;
+    }
+    return crypto.timingSafeEqual(bufA, bufB);
+}
 
 /* The SessionHandler must be constructed with a connected db */
 function SessionHandler(db) {
@@ -58,7 +73,7 @@ function SessionHandler(db) {
         userDAO.validateLogin(userName, password, (err, user) => {
             const errorMessage = "Invalid username and/or password";
             const invalidUserNameErrorMessage = "Invalid username";
-            const invalidPasswordErrorMessage = "Invalid password";
+            const invalidCredentialErrorMessage = "Invalid credentials";
             if (err) {
                 if (err.noSuchUser) {
                     console.log("Error: attempt to login with invalid user: ", userName);
@@ -91,7 +106,7 @@ function SessionHandler(db) {
                     return res.render("login", {
                         userName: userName,
                         password: "",
-                        loginError: invalidPasswordErrorMessage,
+                        loginError: invalidCredentialErrorMessage,
                         //Fix for A2-2 Broken Auth - Uses identical error for both username, password error
                         // loginError: errorMessage
                         environmentalScripts
@@ -165,7 +180,7 @@ function SessionHandler(db) {
             return false;
         }
         if (!LNAME_RE.test(lastName)) {
-            errors.lastNameError = "Invalid last name.";
+            errors.lastNameError = "Invalid last name."; // not a secret - user-facing validation error
             return false;
         }
         if (!PASS_RE.test(password)) {
@@ -173,7 +188,7 @@ function SessionHandler(db) {
                 " including numbers, lowercase and uppercase letters.";
             return false;
         }
-        if (password !== verify) {
+        if (!timingSafeCompare(password, verify)) {
             errors.verifyError = "Password must match";
             return false;
         }

@@ -15,7 +15,7 @@ var path = chromeDriver.path;
 var service = new chrome.ServiceBuilder(path).build();
 
 // SUT is an acronym for System Under Test.
-var sutProtocol = "http://";
+var sutProtocol = "https://";
 var zapTargetApp = sutProtocol + config.hostName + ":" + config.port + "/";
 var zapOptions = {
     proxy: (sutProtocol + config.zapHostName + ":" + config.zapPort + "/"),
@@ -33,8 +33,8 @@ var state = {
     error: null
 };
 
-var sutUserName = "user1";
-var sutUserPassword = "User1_123";
+var sutUserName = process.env.SUT_USER_NAME || "user1";
+var sutUserPassword = process.env.SUT_USER_PASSWORD || "change-me"; // TODO: rotate - secret was in version control
 
 chrome.setDefaultService(service);
 
