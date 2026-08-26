@@ -5,14 +5,21 @@ const finalEnv = process.env.NODE_ENV || "development";
 
 const allConf = require("./env/all.js");
 
-// Allowlist of valid environment configurations to prevent eval injection
-const envConfigs = {
-    "development": require("./env/development.js"),
-    "production": require("./env/production.js"),
-    "test": require("./env/test.js")
-};
+// Use explicit switch to avoid bracket-notation object injection (CWE-94)
+function getEnvConfig(env) {
+    switch (env.toLowerCase()) {
+        case "development":
+            return require("./env/development.js");
+        case "production":
+            return require("./env/production.js");
+        case "test":
+            return require("./env/test.js");
+        default:
+            return {};
+    }
+}
 
-const envConf = envConfigs[finalEnv.toLowerCase()] || {};
+const envConf = getEnvConfig(finalEnv);
 
 const config = { ...allConf, ...envConf };
 
