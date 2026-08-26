@@ -33,8 +33,8 @@ var state = {
     error: null
 };
 
-var sutUserName = "user1";
-var sutUserPassword = "User1_123";
+var sutUserName = process.env.TEST_USERNAME || "user1";
+var sutUserPassword = process.env.TEST_PASSWORD || "User1_123";
 
 chrome.setDefaultService(service);
 
