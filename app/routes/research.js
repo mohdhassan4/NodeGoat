@@ -100,11 +100,12 @@ function ResearchHandler(db) {
                 return needle.get(targetUrl, (error, newResponse, body) => {
                     var safeBody = "";
                     if (body) {
-                        safeBody = ESAPI.encoder().encodeForHTML(body.toString());
+                        safeBody = body.toString();
                     }
-                    var html = "<h1>The following is the stock information you requested.</h1>\n\n" +
-                        safeBody;
-                    return res.status(200).type("html").send(html);
+                    return res.render("research-result", {
+                        body: safeBody,
+                        environmentalScripts
+                    });
                 });
             });
         }
