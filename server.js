@@ -76,7 +76,8 @@ MongoClient.connect(db, (err, db) => {
         name: "sessionId",
         cookie: {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: true,
+            sameSite: "strict",
             domain: process.env.SESSION_COOKIE_DOMAIN || undefined,
             maxAge: 2 * 60 * 60 * 1000, // 2 hours
             path: "/"
@@ -122,8 +123,8 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Use HTTPS when TLS cert and key are available; fall back to HTTP for local dev
-    var tlsCertPath = process.env.TLS_CERT_PATH || path.resolve(__dirname, "./artifacts/cert/server.crt");
-    var tlsKeyPath = process.env.TLS_KEY_PATH || path.resolve(__dirname, "./artifacts/cert/server.key");
+    var tlsCertPath = path.join(__dirname, "artifacts/cert/server.crt");
+    var tlsKeyPath = path.join(__dirname, "artifacts/cert/server.key");
 
     if (fs.existsSync(tlsCertPath) && fs.existsSync(tlsKeyPath)) {
         var httpsOptions = {
