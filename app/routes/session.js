@@ -73,7 +73,7 @@ function SessionHandler(db) {
         userDAO.validateLogin(userName, password, (err, user) => {
             const errorMessage = "Invalid username and/or password";
             const invalidUserNameErrorMessage = "Invalid username";
-            const invalidPasswordErrorMessage = "Invalid password"; // not a secret - user-facing error message
+            const invalidCredentialErrorMessage = "Invalid credentials";
             if (err) {
                 if (err.noSuchUser) {
                     console.log("Error: attempt to login with invalid user: ", userName);
@@ -106,7 +106,7 @@ function SessionHandler(db) {
                     return res.render("login", {
                         userName: userName,
                         password: "",
-                        loginError: invalidPasswordErrorMessage,
+                        loginError: invalidCredentialErrorMessage,
                         //Fix for A2-2 Broken Auth - Uses identical error for both username, password error
                         // loginError: errorMessage
                         environmentalScripts
@@ -129,11 +129,7 @@ function SessionHandler(db) {
             // i.e:
             // `req.session.regenerate(() => {})`
             req.session.userId = user._id;
-            var redirectUrl = user.isAdmin ? "/benefits" : "/dashboard";
-            if (!redirectUrl.startsWith("/") || redirectUrl.startsWith("//") || redirectUrl.includes("\\")) {
-                redirectUrl = "/";
-            }
-            return res.redirect(redirectUrl);
+            return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
         });
     };
 
