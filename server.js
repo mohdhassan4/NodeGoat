@@ -154,9 +154,18 @@ MongoClient.connect(db, (err, db) => {
     const tlsCertPath = process.env.TLS_CERT_PATH;
 
     if (tlsKeyPath && tlsCertPath) {
+        const resolvedKeyPath = path.resolve(__dirname, tlsKeyPath);
+        const resolvedCertPath = path.resolve(__dirname, tlsCertPath);
+        const baseDir = __dirname + path.sep;
+        if (!resolvedKeyPath.startsWith(baseDir)) {
+            throw new Error("TLS key path escapes application directory");
+        }
+        if (!resolvedCertPath.startsWith(baseDir)) {
+            throw new Error("TLS cert path escapes application directory");
+        }
         const httpsOptions = {
-            key: fs.readFileSync(path.resolve(__dirname, tlsKeyPath)),
-            cert: fs.readFileSync(path.resolve(__dirname, tlsCertPath))
+            key: fs.readFileSync(resolvedKeyPath),
+            cert: fs.readFileSync(resolvedCertPath)
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
