@@ -67,9 +67,17 @@ const index = (app, db) => {
     app.post("/memos", isLoggedIn, memosHandler.addMemos);
 
     // Handle redirect for learning resources link
+    const ALLOWED_REDIRECT_PATHS = [
+        "/dashboard", "/tutorial", "/benefits", "/memos",
+        "/contributions", "/research", "/profile", "/allocations"
+    ];
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Insecure way to handle redirects by taking redirect url from query string
-        return res.redirect(req.query.url);
+        const url = req.query.url;
+        // Only allow known internal paths to prevent open redirect
+        if (url && ALLOWED_REDIRECT_PATHS.some(p => url === p || url.startsWith(p + "/"))) {
+            return res.redirect(url);
+        }
+        return res.redirect("/");
     });
 
     // Research Page

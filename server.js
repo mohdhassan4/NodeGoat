@@ -10,6 +10,9 @@ const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -82,23 +85,17 @@ MongoClient.connect(db, (err, db) => {
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
-        /*
+        resave: true,
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
-        key: "sessionId",
-        */
-
-        /*
-        // Fix for A3 - XSS
-        // TODO: Add "maxAge"
+        name: "sessionId",
         cookie: {
-            httpOnly: true
-            // Remember to start an HTTPS server to get this working
-            // secure: true
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            domain: process.env.DOMAIN || "localhost",
+            maxAge: 86400000,
+            path: "/"
         }
-        */
-
     }));
 
     /*
@@ -141,10 +138,26 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
+    // Use HTTPS when TLS certificates are available, fall back to HTTP for development
+    if (process.env.TLS_CERT && process.env.TLS_KEY) {
+        const tlsBaseDir = path.resolve(__dirname, "artifacts", "cert");
+        const certPath = path.resolve(process.env.TLS_CERT);
+        const keyPath = path.resolve(process.env.TLS_KEY);
+        if (!certPath.startsWith(tlsBaseDir) || !keyPath.startsWith(tlsBaseDir)) {
+            throw new Error("TLS_CERT and TLS_KEY must resolve within " + tlsBaseDir);
+        }
+        const options = {
+            cert: fs.readFileSync(certPath),
+            key: fs.readFileSync(keyPath)
+        };
+        https.createServer(options, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port}`);
+        });
+    }
 
     /*
     // Fix for A6-Sensitive Data Exposure
