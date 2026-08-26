@@ -114,7 +114,11 @@ function SessionHandler(db) {
             // i.e:
             // `req.session.regenerate(() => {})`
             req.session.userId = user._id;
-            return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            var redirectUrl = user.isAdmin ? "/benefits" : "/dashboard";
+            if (!redirectUrl.startsWith("/") || redirectUrl.startsWith("//") || redirectUrl.includes("\\")) {
+                redirectUrl = "/";
+            }
+            return res.redirect(redirectUrl);
         });
     };
 
