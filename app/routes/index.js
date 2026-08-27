@@ -26,16 +26,41 @@ const index = (app, db) => {
     //Middleware to check if user has admin rights
     const isAdmin = sessionHandler.isAdminUserMiddleware;
 
+    // Rate limiting middleware for sensitive endpoints (login, signup)
+    const rateLimitMap = new Map();
+    const rateLimitWindowMs = 15 * 60 * 1000; // 15 minutes
+    const rateLimitMaxAttempts = 5;
+
+    const sensitiveEndpointLimiter = (req, res, next) => {
+        var ip = req.ip || req.connection.remoteAddress;
+        var now = Date.now();
+        var key = ip + ":" + req.path;
+        var entry = rateLimitMap.get(key);
+
+        if (!entry || (now - entry.startTime) > rateLimitWindowMs) {
+            rateLimitMap.set(key, {count: 1, startTime: now});
+            return next();
+        }
+
+        if (entry.count >= rateLimitMaxAttempts) {
+            res.status(429);
+            return res.end("Too many requests. Please try again later.");
+        }
+
+        entry.count += 1;
+        return next();
+    };
+
     // The main page of the app
     app.get("/", sessionHandler.displayWelcomePage);
 
     // Login form
     app.get("/login", sessionHandler.displayLoginPage);
-    app.post("/login", sessionHandler.handleLoginRequest);
+    app.post("/login", sensitiveEndpointLimiter, sessionHandler.handleLoginRequest);
 
     // Signup form
     app.get("/signup", sessionHandler.displaySignupPage);
-    app.post("/signup", sessionHandler.handleSignup);
+    app.post("/signup", sensitiveEndpointLimiter, sessionHandler.handleSignup);
 
     // Logout page
     app.get("/logout", sessionHandler.displayLogoutPage);
