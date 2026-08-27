@@ -140,8 +140,8 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Use HTTPS when certificate files are available, fall back to HTTP for development
-    const keyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
-    const certPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
+    const keyPath = path.join(__dirname, "artifacts", "cert", "server.key");
+    const certPath = path.join(__dirname, "artifacts", "cert", "server.crt");
 
     if (fs.existsSync(keyPath) && fs.existsSync(certPath) &&
         fs.readFileSync(keyPath, "utf8").trim().length > 0) {
