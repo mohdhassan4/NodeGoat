@@ -126,7 +126,32 @@ MongoClient.connect(db, (err, db) => {
     marked.setOptions({
         sanitize: true
     });
-    app.locals.marked = marked;
+
+    // Fix for A3 - XSS: sanitize marked output to prevent stored XSS
+    // marked 0.3.5 sanitize option is bypassable; apply post-processing
+    const safeMarked = function(text) {
+        if (!text) return "";
+        var html = marked(text);
+        // Remove all tags not in the allowlist of safe markdown-generated tags
+        var allowedTags = /^\/?(p|br|strong|em|b|i|u|a|ul|ol|li|h[1-6]|blockquote|code|pre|hr|table|thead|tbody|tr|th|td|img|del|sup|sub|dd|dt|dl)$/i;
+        html = html.replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)\b[^>]*?>/g, function(match, tagName) {
+            if (!allowedTags.test(tagName)) {
+                return "";
+            }
+            // For closing tags, return as-is
+            if (match.indexOf("</") === 0) {
+                return match;
+            }
+            // Strip event handler attributes (on*)
+            var cleaned = match.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "");
+            // Strip dangerous URI schemes in href and src attributes
+            cleaned = cleaned.replace(/(href|src)\s*=\s*"?\s*(javascript|vbscript|data)\s*:[^"]*"/gi, "$1=\"#\"");
+            cleaned = cleaned.replace(/(href|src)\s*=\s*'?\s*(javascript|vbscript|data)\s*:[^']*'/gi, "$1='#'");
+            return cleaned;
+        });
+        return html;
+    };
+    app.locals.marked = safeMarked;
 
     // Application routes
     routes(app, db);
