@@ -68,8 +68,21 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Insecure way to handle redirects by taking redirect url from query string
-        return res.redirect(req.query.url);
+        const redirectUrl = req.query.url;
+        // Validate redirect destination against allowlist
+        const allowedDomains = [
+            "https://www.khanacademy.org"
+        ];
+        const isAllowedExternal = allowedDomains.some((domain) => {
+            return redirectUrl && redirectUrl.indexOf(domain) === 0;
+        });
+        const isSafeRelative = redirectUrl &&
+            redirectUrl.charAt(0) === "/" &&
+            redirectUrl.charAt(1) !== "/";
+        if (isAllowedExternal || isSafeRelative) {
+            return res.redirect(redirectUrl);
+        }
+        return res.redirect("/dashboard");
     });
 
     // Research Page
