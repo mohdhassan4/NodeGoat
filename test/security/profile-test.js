@@ -34,7 +34,7 @@ var state = {
 };
 
 var sutUserName = "user1";
-var sutUserPassword = "User1_123";
+var sutUserPassword = process.env.SEED_USER1_PASSWORD || "TestUser1_e2e!7k";
 
 chrome.setDefaultService(service);
 

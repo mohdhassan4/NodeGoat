@@ -60,7 +60,14 @@ function SessionHandler(db) {
             const invalidUserNameErrorMessage = "Invalid username";
             const invalidPasswordErrorMessage = "Invalid password";
             if (err) {
-                if (err.noSuchUser) {
+                if (err.invalidInput) {
+                    return res.render("login", {
+                        userName: "",
+                        password: "",
+                        loginError: errorMessage,
+                        environmentalScripts
+                    });
+                } else if (err.noSuchUser) {
                     console.log("Error: attempt to login with invalid user: ", userName);
 
                     // Fix for A1 - 3 Log Injection - encode/sanitize input for CRLF Injection
@@ -113,8 +120,11 @@ function SessionHandler(db) {
             // by wrapping the below code as a function callback for the method req.session.regenerate()
             // i.e:
             // `req.session.regenerate(() => {})`
-            req.session.userId = user._id;
-            return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            req.session.regenerate((err) => {
+                if (err) return next(err);
+                req.session.userId = user._id;
+                return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            });
         });
     };
 

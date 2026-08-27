@@ -5,9 +5,40 @@
 // This script initializes the database. You can set the environment variable
 // before running it (default: development). ie:
 // NODE_ENV=production node artifacts/db-reset.js
+//
+// Seed passwords are read from environment variables. If not set, secure
+// random passwords are generated and logged so the operator can retrieve them.
+//   SEED_ADMIN_PASSWORD - password for the "admin" account
+//   SEED_USER1_PASSWORD - password for the "user1" account
+//   SEED_USER2_PASSWORD - password for the "user2" account
 
+const crypto = require("crypto");
+const bcrypt = require("bcrypt-nodejs");
 const { MongoClient } = require("mongodb");
 const { db } = require("../config/config");
+
+const generateSecurePassword = () => crypto.randomBytes(16).toString("hex");
+
+const resolvePassword = (envVar, label) => {
+    const fromEnv = process.env[envVar];
+    if (fromEnv) {
+        return fromEnv;
+    }
+    const generated = generateSecurePassword();
+    console.warn(
+        `WARNING: No ${envVar} set. Generated random password for ${label}: ${generated}`
+    );
+    console.warn(
+        "Set the environment variable to use a specific password on next seed."
+    );
+    return generated;
+};
+
+const adminPassword = resolvePassword("SEED_ADMIN_PASSWORD", "admin");
+const user1Password = resolvePassword("SEED_USER1_PASSWORD", "user1");
+const user2Password = resolvePassword("SEED_USER2_PASSWORD", "user2");
+
+const hashPassword = (plain) => bcrypt.hashSync(plain, bcrypt.genSaltSync());
 
 const USERS_TO_INSERT = [
     {
@@ -15,8 +46,7 @@ const USERS_TO_INSERT = [
         "userName": "admin",
         "firstName": "Node Goat",
         "lastName": "Admin",
-        "password": "Admin_123",
-        //"password" : "$2a$10$8Zo/1e8KM8QzqOKqbDlYlONBOzukWXrM.IiyzqHRYDXqwB3gzDsba", // Admin_123
+        "password": hashPassword(adminPassword),
         "isAdmin": true
     }, {
         "_id": 2,
@@ -24,16 +54,14 @@ const USERS_TO_INSERT = [
         "firstName": "John",
         "lastName": "Doe",
         "benefitStartDate": "2030-01-10",
-        "password": "User1_123"
-        // "password" : "$2a$10$RNFhiNmt2TTpVO9cqZElb.LQM9e1mzDoggEHufLjAnAKImc6FNE86",// User1_123
+        "password": hashPassword(user1Password)
     }, {
         "_id": 3,
         "userName": "user2",
         "firstName": "Will",
         "lastName": "Smith",
         "benefitStartDate": "2025-11-30",
-        "password": "User2_123"
-        //"password" : "$2a$10$Tlx2cNv15M0Aia7wyItjsepeA8Y6PyBYaNdQqvpxkIUlcONf1ZHyq", // User2_123
+        "password": hashPassword(user2Password)
     }];
 
 const tryDropCollection = (db, name) => {
@@ -60,12 +88,13 @@ const parseResponse = (err, res, comm) => {
 
 
 // Starting here
-MongoClient.connect(db, (err, db) =>  {
+MongoClient.connect(db, { useUnifiedTopology: true }, (err, client) =>  {
     if (err) {
         console.log("ERROR: connect");
         console.log(JSON.stringify(err));
         process.exit(1);
     }
+    const database = client.db();
     console.log("Connected to the database");
 
     const collectionNames = [
@@ -78,13 +107,13 @@ MongoClient.connect(db, (err, db) =>  {
 
     // remove existing data (if any), we don't want to look for errors here
     console.log("Dropping existing collections");
-    const dropPromises = collectionNames.map((name) => tryDropCollection(db, name));
+    const dropPromises = collectionNames.map((name) => tryDropCollection(database, name));
 
     // Wait for all drops to finish (or fail) before continuing
     Promise.all(dropPromises).then(() => {
-        const usersCol = db.collection("users");
-        const allocationsCol = db.collection("allocations");
-        const countersCol = db.collection("counters");
+        const usersCol = database.collection("users");
+        const allocationsCol = database.collection("allocations");
+        const countersCol = database.collection("counters");
 
         // reset unique id counter
         countersCol.insert({

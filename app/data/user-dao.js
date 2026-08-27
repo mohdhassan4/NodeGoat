@@ -22,12 +22,9 @@ function UserDAO(db) {
             firstName,
             lastName,
             benefitStartDate: this.getRandomFutureDate(),
-            password //received from request param
-            /*
             // Fix for A2-1 - Broken Auth
-            // Stores password  in a safer way using one way encryption and salt hashing
+            // Stores password in a safer way using one way encryption and salt hashing
             password: bcrypt.hashSync(password, bcrypt.genSaltSync())
-            */
         };
 
         // Add email if set
@@ -56,14 +53,20 @@ function UserDAO(db) {
 
     this.validateLogin = (userName, password, callback) => {
 
+        // Fix for A1 - NoSQL Injection
+        // Validate that userName and password are strings to prevent operator injection
+        // e.g. {"userName": {"$gt": ""}} would bypass authentication
+        if (typeof userName !== "string" || typeof password !== "string") {
+            const invalidInputError = new Error("Invalid input");
+            invalidInputError.invalidInput = true;
+            return callback(invalidInputError, null);
+        }
+
         // Helper function to compare passwords
+        // Fix for A2-Broken Auth
+        // compares hashed password stored in this.addUser()
         const comparePassword = (fromDB, fromUser) => {
-            return fromDB === fromUser;
-            /*
-            // Fix for A2-Broken Auth
-            // compares decrypted password stored in this.addUser()
             return bcrypt.compareSync(fromDB, fromUser);
-            */
         };
 
         // Callback to pass to MongoDB that validates a user document
