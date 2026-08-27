@@ -18,28 +18,9 @@ const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
 
-// Validate that a certificate path resolves within the allowed base directory
-function validateCertPath(certPath, defaultPath, allowedBase) {
-    const resolved = path.resolve(certPath);
-    if (!resolved.startsWith(allowedBase + path.sep)) {
-        console.warn(
-            "Certificate path is outside allowed directory, using default."
-        );
-        return defaultPath;
-    }
-    return resolved;
-}
-
-// Load TLS key and cert from environment variable paths for secure HTTPS connection
-const certAllowedBase = path.resolve(__dirname);
-const defaultKeyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
-const defaultCertPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
-const tlsKeyPath = process.env.TLS_KEY_PATH
-    ? validateCertPath(process.env.TLS_KEY_PATH, defaultKeyPath, certAllowedBase)
-    : defaultKeyPath;
-const tlsCertPath = process.env.TLS_CERT_PATH
-    ? validateCertPath(process.env.TLS_CERT_PATH, defaultCertPath, certAllowedBase)
-    : defaultCertPath;
+// TLS certificate paths (hardcoded to project directory)
+const tlsKeyPath = path.join(__dirname, "artifacts", "cert", "server.key");
+const tlsCertPath = path.join(__dirname, "artifacts", "cert", "server.crt");
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -156,8 +137,7 @@ MongoClient.connect(db, (err, db) => {
             console.log(`Express https server listening on port ${port}`);
         });
     } else {
-        console.warn("TLS cert/key not found. Falling back to HTTP. " +
-            "Set TLS_KEY_PATH and TLS_CERT_PATH for HTTPS.");
+        console.warn("TLS cert/key not found at artifacts/cert/. Falling back to HTTP.");
         app.listen(port, () => {
             console.log(`Express http server listening on port ${port}`);
         });
