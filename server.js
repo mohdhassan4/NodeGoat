@@ -146,7 +146,15 @@ MongoClient.connect(db, (err, db) => {
     const tlsKeyPath = process.env.TLS_KEY_PATH;
     const tlsCertPath = process.env.TLS_CERT_PATH;
 
-    if (tlsKeyPath && tlsCertPath && fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
+    // Validate TLS paths are absolute and normalized (no path traversal)
+    function isValidTlsPath(p) {
+        var resolved = path.resolve(p);
+        return path.isAbsolute(p) && resolved === path.normalize(p);
+    }
+
+    if (tlsKeyPath && tlsCertPath &&
+        isValidTlsPath(tlsKeyPath) && isValidTlsPath(tlsCertPath) &&
+        fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
         const httpsOptions = {
             key: fs.readFileSync(tlsKeyPath),
             cert: fs.readFileSync(tlsCertPath)
@@ -155,7 +163,7 @@ MongoClient.connect(db, (err, db) => {
             console.log(`Express https server listening on port ${port}`);
         });
     } else {
-        console.warn("WARNING: TLS_KEY_PATH/TLS_CERT_PATH not set or files not found. Starting insecure HTTP server.");
+        console.warn("WARNING: TLS paths invalid/missing. Starting insecure HTTP server.");
         http.createServer(app).listen(port, () => {
             console.log(`Express http server listening on port ${port}`);
         });
