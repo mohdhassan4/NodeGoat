@@ -101,20 +101,16 @@ function SessionHandler(db) {
                 }
             }
 
-            // A2-Broken Authentication and Session Management
-            // Upon login, a security best practice with regards to cookies session management
-            // would be to regenerate the session id so that if an id was already created for
-            // a user on an insecure medium (i.e: non-HTTPS website or otherwise), or if an
-            // attacker was able to get their hands on the cookie id before the user logged-in,
-            // then the old session id will render useless as the logged-in user with new privileges
-            // holds a new session id now.
-
-            // Fix the problem by regenerating a session in each login
-            // by wrapping the below code as a function callback for the method req.session.regenerate()
-            // i.e:
-            // `req.session.regenerate(() => {})`
-            req.session.userId = user._id;
-            return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            // Regenerate session to prevent session fixation attacks (CWE-384).
+            // A new session id is issued so any pre-authentication session id
+            // an attacker may have obtained becomes invalid.
+            req.session.regenerate((err) => {
+                if (err) {
+                    return next(err);
+                }
+                req.session.userId = user._id;
+                return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            });
         });
     };
 
@@ -141,12 +137,7 @@ function SessionHandler(db) {
         const FNAME_RE = /^.{1,100}$/;
         const LNAME_RE = /^.{1,100}$/;
         const EMAIL_RE = /^[\S]+@[\S]+\.[\S]+$/;
-        const PASS_RE = /^.{1,20}$/;
-        /*
-        //Fix for A2-2 - Broken Authentication -  requires stronger password
-        //(at least 8 characters with numbers and both lowercase and uppercase letters.)
-        const PASS_RE =/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
-        */
+        const PASS_RE = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
 
         errors.userNameError = "";
         errors.firstNameError = "";

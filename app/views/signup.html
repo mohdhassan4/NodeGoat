@@ -122,9 +122,11 @@
     <script src="/vendor/jquery.min.js"></script>
     <script src="/vendor/bootstrap/bootstrap.js"></script>
     <!-- Load environmental scripts such as live reload -->
+    {% autoescape false %}
     {% for script in environmentalScripts %}
     {{script}}
     {% endfor %}
+    {% endautoescape %}
 
 </body>
 

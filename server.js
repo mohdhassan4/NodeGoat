@@ -4,10 +4,10 @@ const express = require("express");
 const favicon = require("serve-favicon");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-// const csrf = require('csurf');
+const csrf = require("csurf");
 const consolidate = require("consolidate"); // Templating library adapter for Express
 const swig = require("swig");
-// const helmet = require("helmet");
+const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
 const marked = require("marked");
@@ -35,34 +35,23 @@ MongoClient.connect(db, (err, db) => {
     }
     console.log(`Connected to the database`);
 
-    /*
     // Fix for A5 - Security MisConfig
-    // TODO: Review the rest of helmet options, like "xssFilter"
-    // Remove default x-powered-by response header
+    // Enable helmet to set security headers (X-Frame-Options, X-Content-Type-Options,
+    // X-XSS-Protection, Strict-Transport-Security, etc.)
+    app.use(helmet());
     app.disable("x-powered-by");
 
-    // Prevent opening page in frame or iframe to protect from clickjacking
-    app.use(helmet.frameguard()); //xframe deprecated
-
-    // Prevents browser from caching and storing page
-    app.use(helmet.noCache());
-
-    // Allow loading resources only from white-listed domains
-    app.use(helmet.contentSecurityPolicy()); //csp deprecated
-
-    // Allow communication only on HTTPS
-    app.use(helmet.hsts());
-
-    // TODO: Add another vuln: https://github.com/helmetjs/helmet/issues/26
-    // Enable XSS filter in IE (On by default)
-    // app.use(helmet.iexss());
-    // Now it should be used in hit way, but the README alerts that could be
-    // dangerous, like specified in the issue.
-    // app.use(helmet.xssFilter({ setOnOldIE: true }));
-
-    // Forces browser to only use the Content-Type set in the response header instead of sniffing or guessing it
-    app.use(nosniff());
-    */
+    // Fix for A6 - Sensitive Data Exposure
+    // Enforce HTTPS in production by redirecting plaintext requests
+    // when running behind a TLS-terminating reverse proxy
+    app.set("trust proxy", 1);
+    app.use((req, res, next) => {
+        if (process.env.NODE_ENV === "production" &&
+            req.headers["x-forwarded-proto"] !== "https") {
+            return res.redirect(301, "https://" + req.headers.host + req.url);
+        }
+        next();
+    });
 
     // Adding/ remove HTTP Headers for security
     app.use(favicon(__dirname + "/app/assets/favicon.ico"));
@@ -82,26 +71,18 @@ MongoClient.connect(db, (err, db) => {
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
-        /*
+        resave: true,
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
         key: "sessionId",
-        */
-
-        /*
-        // Fix for A3 - XSS
-        // TODO: Add "maxAge"
+        // Fix for A3 - XSS and A5 - Security MisConfig
         cookie: {
-            httpOnly: true
-            // Remember to start an HTTPS server to get this working
-            // secure: true
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict"
         }
-        */
-
     }));
 
-    /*
     // Fix for A8 - CSRF
     // Enable Express csrf protection
     app.use(csrf());
@@ -110,7 +91,6 @@ MongoClient.connect(db, (err, db) => {
         res.locals.csrftoken = req.csrfToken();
         next();
     });
-    */
 
     // Register templating engine
     app.engine(".html", consolidate.swig);
@@ -126,19 +106,31 @@ MongoClient.connect(db, (err, db) => {
     marked.setOptions({
         sanitize: true
     });
-    app.locals.marked = marked;
+
+    // Fix for A3 - XSS: Sanitize marked output to prevent stored XSS
+    // The sanitize option in marked is deprecated and has known bypasses,
+    // so we add output sanitization to strip dangerous HTML patterns.
+    const safeMarked = function(text) {
+        if (!text) return "";
+        var html = marked(text);
+        // Remove script tags and their content
+        html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+        // Remove event handler attributes (onclick, onerror, onload, etc.)
+        html = html.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "");
+        // Neutralize javascript:, vbscript:, and data: protocol URLs
+        html = html.replace(/(href|src|action)\s*=\s*["']\s*(javascript|vbscript|data)\s*:/gi,
+            "$1=\"#sanitized:");
+        return html;
+    };
+    app.locals.marked = safeMarked;
 
     // Application routes
     routes(app, db);
 
     // Template system setup
+    // Fix for A3 - XSS, enable auto escaping
     swig.setDefaults({
-        // Autoescape disabled
-        autoescape: false
-        /*
-        // Fix for A3 - XSS, enable auto escaping
-        autoescape: true // default value
-        */
+        autoescape: true
     });
 
     // Insecure HTTP connection

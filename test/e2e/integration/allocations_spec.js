@@ -16,22 +16,31 @@ describe("/allocations behaviour", () => {
     cy.url().should("include", "login");
   });
 
-  it("Should be accesible for a logged user", () => {
+  it("Should deny access to another user's allocations", () => {
     cy.userSignIn();
-    cy.visitPage("/allocations/1");
+    cy.request({url: "/allocations/someOtherUserId", failOnStatusCode: false})
+      .its("status").should("eq", 403);
+  });
+
+  it("Should be accesible for a logged user via navigation link", () => {
+    cy.userSignIn();
+    cy.visitPage("/dashboard");
+    cy.get("#allocations-menu-link").click();
     cy.url().should("include", "allocations");
   });
 
   it("Should be an input", () => {
     cy.userSignIn();
-    cy.visitPage("/allocations/1");
+    cy.visitPage("/dashboard");
+    cy.get("#allocations-menu-link").click();
     cy.get("input[name='threshold']");
   });
 
   it("Should redirect the user", () => {
     const threshold = 2;
     cy.userSignIn();
-    cy.visitPage("/allocations/1");
+    cy.visitPage("/dashboard");
+    cy.get("#allocations-menu-link").click();
 
     cy.get("input[name='threshold']")
       .clear()
@@ -42,7 +51,7 @@ describe("/allocations behaviour", () => {
 
     cy.location().should((loc) => {
       expect(loc.search).to.eq(`?threshold=${threshold}`);
-      expect(loc.pathname).to.eq("/allocations/1");
+      expect(loc.pathname).to.include("/allocations/");
     });
   });
 });

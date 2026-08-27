@@ -8,6 +8,49 @@ const ResearchHandler = require("./research");
 const tutorialRouter = require("./tutorial");
 const ErrorHandler = require("./error").errorHandler;
 
+// Fix for CWE-307: In-memory login rate limiter to prevent brute-force attacks
+const loginAttempts = new Map();
+const LOGIN_RATE_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const LOGIN_RATE_MAX_ATTEMPTS = 5; // max attempts per window per IP
+
+const loginRateLimiter = (req, res, next) => {
+    "use strict";
+
+    const ip = req.ip || req.connection.remoteAddress;
+    const now = Date.now();
+    let record = loginAttempts.get(ip);
+
+    if (!record || (now - record.windowStart) > LOGIN_RATE_WINDOW_MS) {
+        record = { windowStart: now, count: 0 };
+        loginAttempts.set(ip, record);
+    }
+
+    record.count += 1;
+
+    if (record.count > LOGIN_RATE_MAX_ATTEMPTS) {
+        return res.status(429).render("login", {
+            userName: "",
+            password: "",
+            loginError: "Too many login attempts. Please try again after 15 minutes.",
+            environmentalScripts: require("../../config/config").environmentalScripts
+        });
+    }
+
+    return next();
+};
+
+// Periodically clean up expired entries to prevent memory leaks
+setInterval(() => {
+    "use strict";
+
+    const now = Date.now();
+    loginAttempts.forEach((record, ip) => {
+        if ((now - record.windowStart) > LOGIN_RATE_WINDOW_MS) {
+            loginAttempts.delete(ip);
+        }
+    });
+}, LOGIN_RATE_WINDOW_MS);
+
 const index = (app, db) => {
 
     "use strict";
@@ -31,7 +74,7 @@ const index = (app, db) => {
 
     // Login form
     app.get("/login", sessionHandler.displayLoginPage);
-    app.post("/login", sessionHandler.handleLoginRequest);
+    app.post("/login", loginRateLimiter, sessionHandler.handleLoginRequest);
 
     // Signup form
     app.get("/signup", sessionHandler.displaySignupPage);
@@ -52,12 +95,9 @@ const index = (app, db) => {
     app.post("/contributions", isLoggedIn, contributionsHandler.handleContributionsUpdate);
 
     // Benefits Page
-    app.get("/benefits", isLoggedIn, benefitsHandler.displayBenefits);
-    app.post("/benefits", isLoggedIn, benefitsHandler.updateBenefits);
-    /* Fix for A7 - checks user role to implement  Function Level Access Control
-     app.get("/benefits", isLoggedIn, isAdmin, benefitsHandler.displayBenefits);
-     app.post("/benefits", isLoggedIn, isAdmin, benefitsHandler.updateBenefits);
-     */
+    // Fix for A7 - checks user role to implement Function Level Access Control
+    app.get("/benefits", isLoggedIn, isAdmin, benefitsHandler.displayBenefits);
+    app.post("/benefits", isLoggedIn, isAdmin, benefitsHandler.updateBenefits);
 
     // Allocations Page
     app.get("/allocations/:userId", isLoggedIn, allocationsHandler.displayAllocations);
@@ -68,8 +108,17 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Insecure way to handle redirects by taking redirect url from query string
-        return res.redirect(req.query.url);
+        "use strict";
+
+        const url = req.query.url;
+
+        // Validate redirect URL: allow only relative paths (starting with /)
+        // Block protocol-relative URLs (//), absolute URLs, and javascript: schemes
+        if (!url || typeof url !== "string" || !url.startsWith("/") || url.startsWith("//")) {
+            return res.redirect("/");
+        }
+
+        return res.redirect(url);
     });
 
     // Research Page
