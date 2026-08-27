@@ -51,6 +51,13 @@ function UserDAO(db) {
 
     this.validateLogin = (userName, password, callback) => {
 
+        // Sanitize input to prevent NoSQL operator injection
+        if (typeof userName !== "string") {
+            const invalidInputError = new Error("Invalid username");
+            invalidInputError.noSuchUser = true;
+            return callback(invalidInputError, null);
+        }
+
         // Helper function to compare passwords using bcrypt
         const comparePassword = (fromDB, fromUser) => {
             return bcrypt.compareSync(fromDB, fromUser);
@@ -91,6 +98,10 @@ function UserDAO(db) {
     };
 
     this.getUserByUserName = (userName, callback) => {
+        // Sanitize input to prevent NoSQL operator injection
+        if (typeof userName !== "string") {
+            return callback(new Error("Invalid username"), null);
+        }
         usersCol.findOne({
             userName: userName
         }, callback);
