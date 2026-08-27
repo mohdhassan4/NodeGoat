@@ -47,6 +47,29 @@ const index = (app, db) => {
     app.get("/profile", isLoggedIn, profileHandler.displayProfile);
     app.post("/profile", isLoggedIn, profileHandler.handleProfileUpdate);
 
+    // Account deletion endpoint (GDPR Art. 17 - Right to Erasure)
+    app.post("/delete-account", isLoggedIn, (req, res, next) => {
+        const userId = parseInt(req.session.userId);
+        const usersCol = db.collection("users");
+        const allocationsCol = db.collection("allocations");
+        const contributionsCol = db.collection("contributions");
+
+        usersCol.remove({_id: userId}, (err) => {
+            if (err) return next(err);
+            allocationsCol.remove({userId: userId}, (err) => {
+                if (err) return next(err);
+                contributionsCol.remove({userId: userId}, (err) => {
+                    if (err) return next(err);
+                    req.session.destroy((err) => {
+                        if (err) return next(err);
+                        res.clearCookie("connect.sid");
+                        return res.redirect("/");
+                    });
+                });
+            });
+        });
+    });
+
     // Contributions Page
     app.get("/contributions", isLoggedIn, contributionsHandler.displayContributions);
     app.post("/contributions", isLoggedIn, contributionsHandler.handleContributionsUpdate);
