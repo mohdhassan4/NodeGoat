@@ -65,6 +65,7 @@ describe("/profile behaviour", () => {
 
     cy.get("form[role='form'] a")
       .should("be.visible")
-      .should("have.attr", "href");
+      .should("have.attr", "href")
+      .and("match", /^https:\/\/www\.google\.com\/search\?q=/);
   });
 });
