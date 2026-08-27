@@ -53,6 +53,15 @@ function UserDAO(db) {
 
     this.validateLogin = (userName, password, callback) => {
 
+        // Fix for A1 - NoSQL Injection
+        // Validate that userName and password are strings to prevent operator injection
+        // e.g. {"userName": {"$gt": ""}} would bypass authentication
+        if (typeof userName !== "string" || typeof password !== "string") {
+            const invalidInputError = new Error("Invalid input");
+            invalidInputError.invalidInput = true;
+            return callback(invalidInputError, null);
+        }
+
         // Helper function to compare passwords
         // Fix for A2-Broken Auth
         // compares hashed password stored in this.addUser()

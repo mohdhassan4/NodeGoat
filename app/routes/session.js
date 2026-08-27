@@ -60,7 +60,14 @@ function SessionHandler(db) {
             const invalidUserNameErrorMessage = "Invalid username";
             const invalidPasswordErrorMessage = "Invalid password";
             if (err) {
-                if (err.noSuchUser) {
+                if (err.invalidInput) {
+                    return res.render("login", {
+                        userName: "",
+                        password: "",
+                        loginError: errorMessage,
+                        environmentalScripts
+                    });
+                } else if (err.noSuchUser) {
                     console.log("Error: attempt to login with invalid user: ", userName);
 
                     // Fix for A1 - 3 Log Injection - encode/sanitize input for CRLF Injection
