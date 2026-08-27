@@ -22,9 +22,10 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
+    key: fs.readFileSync(path.resolve(__dirname, process.env.TLS_KEY_PATH || "./artifacts/cert/server.key")),
+    cert: fs.readFileSync(path.resolve(__dirname, process.env.TLS_CERT_PATH || "./artifacts/cert/server.crt"))
 };
+// NOTE: Do not commit private key files to the repository. Provide key via TLS_KEY_PATH env var.
 */
 
 MongoClient.connect(db, (err, db) => {
