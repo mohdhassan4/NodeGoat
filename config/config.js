@@ -1,11 +1,15 @@
 const _ = require("underscore");
-const path = require("path");
 const util = require("util");
 
-const finalEnv = process.env.NODE_ENV || "development";
+const finalEnv = (process.env.NODE_ENV || "development").toLowerCase();
 
-const allConf = require(path.resolve(__dirname + "/../config/env/all.js"));
-const envConf = require(path.resolve(__dirname + "/../config/env/" + finalEnv.toLowerCase() + ".js")) || {};
+const allConf = require("./env/all");
+const envConfigs = {
+    development: require("./env/development"),
+    test: require("./env/test"),
+    production: require("./env/production")
+};
+const envConf = envConfigs[finalEnv] || {};
 
 const config = { ...allConf, ...envConf };
 

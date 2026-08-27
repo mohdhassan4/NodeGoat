@@ -4,11 +4,13 @@ const express = require("express");
 const favicon = require("serve-favicon");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-// const csrf = require('csurf');
+const csrf = require("csurf");
 const consolidate = require("consolidate"); // Templating library adapter for Express
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
+const fs = require("fs");
+const path = require("path");
 const http = require("http");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
@@ -79,10 +81,18 @@ MongoClient.connect(db, (err, db) => {
         // genid: (req) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
+        name: "sessionId",
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            domain: process.env.DOMAIN || undefined,
+            maxAge: 2 * 60 * 60 * 1000, // 2 hours
+            path: "/"
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
@@ -101,7 +111,6 @@ MongoClient.connect(db, (err, db) => {
 
     }));
 
-    /*
     // Fix for A8 - CSRF
     // Enable Express csrf protection
     app.use(csrf());
@@ -110,7 +119,6 @@ MongoClient.connect(db, (err, db) => {
         res.locals.csrftoken = req.csrfToken();
         next();
     });
-    */
 
     // Register templating engine
     app.engine(".html", consolidate.swig);
@@ -141,10 +149,28 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
+    // Use HTTPS when TLS certificates are configured, fall back to HTTP otherwise
+    if (process.env.SSL_KEY_PATH && process.env.SSL_CERT_PATH) {
+        const https = require("https");
+        if (process.env.SSL_KEY_PATH.indexOf("..") !== -1 ||
+            process.env.SSL_CERT_PATH.indexOf("..") !== -1) {
+            throw new Error("Path traversal detected in SSL certificate paths");
+        }
+        var sslKeyPath = path.resolve(process.env.SSL_KEY_PATH);
+        var sslCertPath = path.resolve(process.env.SSL_CERT_PATH);
+        const httpsOptions = {
+            key: fs.readFileSync(sslKeyPath),
+            cert: fs.readFileSync(sslCertPath)
+        };
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        console.warn("No TLS certificates configured (SSL_KEY_PATH, SSL_CERT_PATH) — running HTTP. Not recommended for production.");
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port}`);
+        });
+    }
 
     /*
     // Fix for A6-Sensitive Data Exposure
