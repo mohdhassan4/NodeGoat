@@ -109,17 +109,21 @@ function SessionHandler(db) {
             // then the old session id will render useless as the logged-in user with new privileges
             // holds a new session id now.
 
-            // Fix the problem by regenerating a session in each login
-            // by wrapping the below code as a function callback for the method req.session.regenerate()
-            // i.e:
-            // `req.session.regenerate(() => {})`
-            req.session.userId = user._id;
-            return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            // Regenerate session on login to prevent session fixation
+            req.session.regenerate((err) => {
+                if (err) return next(err);
+                req.session.userId = user._id;
+                return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            });
         });
     };
 
     this.displayLogoutPage = (req, res) => {
-        req.session.destroy(() => res.redirect("/"));
+        req.session.destroy((err) => {
+            // Clear session cookie to fully invalidate the session
+            res.clearCookie("connect.sid");
+            return res.redirect("/");
+        });
     };
 
     this.displaySignupPage = (req, res) => {
@@ -223,14 +227,8 @@ function SessionHandler(db) {
 
                     //prepare data for the user
                     prepareUserData(user, next);
-                    /*
-                    sessionDAO.startSession(user._id, (err, sessionId) => {
-                        if (err) return next(err);
-                        res.cookie("session", sessionId);
-                        req.session.userId = user._id;
-                        return res.render("dashboard", { ...user, environmentalScripts });
-                    });
-                    */
+                    // Session cookie set by req.session.regenerate() is strictly necessary
+                    // for authentication and is exempt from consent per GDPR/ePrivacy Directive.
                     req.session.regenerate(() => {
                         req.session.userId = user._id;
                         // Set userId property. Required for left nav menu links

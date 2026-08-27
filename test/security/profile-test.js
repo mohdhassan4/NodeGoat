@@ -34,7 +34,7 @@ var state = {
 };
 
 var sutUserName = "user1";
-var sutUserPassword = "User1_123";
+var sutUserPassword = process.env.SUT_USER_PASSWORD || "changeme"; // credential must be rotated — exposed in git history
 
 chrome.setDefaultService(service);
 

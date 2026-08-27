@@ -23,19 +23,60 @@ const index = (app, db) => {
     // Middleware to check if a user is logged in
     const isLoggedIn = sessionHandler.isLoggedInMiddleware;
 
-    //Middleware to check if user has admin rights
-    const isAdmin = sessionHandler.isAdminUserMiddleware;
+    //Middleware to check if user has admin rights and regenerate session on privilege escalation
+    const isAdmin = (req, res, next) => {
+        sessionHandler.isAdminUserMiddleware(req, res, () => {
+            // Regenerate session when escalating to admin context to prevent session fixation
+            if (!req.session.adminSessionRegenerated) {
+                const userId = req.session.userId;
+                return req.session.regenerate((err) => {
+                    if (err) return next(err);
+                    req.session.userId = userId;
+                    req.session.adminSessionRegenerated = true;
+                    return next();
+                });
+            }
+            return next();
+        });
+    };
+
+    // Simple in-memory rate limiter for sensitive endpoints
+    const rateLimitStore = {};
+    const createRateLimiter = (windowMs, maxAttempts) => {
+        return (req, res, next) => {
+            var key = req.ip + req.path;
+            var now = Date.now();
+
+            if (!rateLimitStore[key] || rateLimitStore[key].resetTime <= now) {
+                rateLimitStore[key] = { count: 1, resetTime: now + windowMs };
+                return next();
+            }
+
+            rateLimitStore[key].count += 1;
+
+            if (rateLimitStore[key].count > maxAttempts) {
+                return res.status(429).json({
+                    message: "Too many requests, please try again later."
+                });
+            }
+
+            return next();
+        };
+    };
+
+    // Rate limiter: max 50 attempts per 15-minute window per IP
+    const sensitiveEndpointLimiter = createRateLimiter(15 * 60 * 1000, 50);
 
     // The main page of the app
     app.get("/", sessionHandler.displayWelcomePage);
 
     // Login form
     app.get("/login", sessionHandler.displayLoginPage);
-    app.post("/login", sessionHandler.handleLoginRequest);
+    app.post("/login", sensitiveEndpointLimiter, sessionHandler.handleLoginRequest);
 
     // Signup form
     app.get("/signup", sessionHandler.displaySignupPage);
-    app.post("/signup", sessionHandler.handleSignup);
+    app.post("/signup", sensitiveEndpointLimiter, sessionHandler.handleSignup);
 
     // Logout page
     app.get("/logout", sessionHandler.displayLogoutPage);
@@ -46,6 +87,9 @@ const index = (app, db) => {
     // Profile page
     app.get("/profile", isLoggedIn, profileHandler.displayProfile);
     app.post("/profile", isLoggedIn, profileHandler.handleProfileUpdate);
+
+    // GDPR Art. 17 - Right to erasure: allows authenticated users to delete their data
+    app.delete("/profile", isLoggedIn, profileHandler.handleProfileDelete);
 
     // Contributions Page
     app.get("/contributions", isLoggedIn, contributionsHandler.displayContributions);
@@ -68,8 +112,13 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Insecure way to handle redirects by taking redirect url from query string
-        return res.redirect(req.query.url);
+        var url = req.query.url;
+        // Validate redirect destination: must be a relative path starting with /
+        // and must not be a protocol-relative URL (//evil.com)
+        if (typeof url === "string" && url.startsWith("/") && !url.startsWith("//")) {
+            return res.redirect(url);
+        }
+        return res.redirect("/");
     });
 
     // Research Page
