@@ -13,7 +13,7 @@ const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
-const marked = require("marked");
+const { marked } = require("marked");
 const sanitizeHtml = require("sanitize-html");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
@@ -25,12 +25,13 @@ const { port, db, cookieSecret } = require("./config/config"); // Application co
 const tlsCertPath = process.env.TLS_CERT_PATH;
 const tlsKeyPath = process.env.TLS_KEY_PATH;
 
-MongoClient.connect(db, (err, db) => {
+MongoClient.connect(db, { useUnifiedTopology: true }, (err, client) => {
     if (err) {
         console.log("Error: DB: connect");
         console.log(err);
         process.exit(1);
     }
+    const database = client.db();
     console.log(`Connected to the database`);
 
     /*
@@ -118,10 +119,8 @@ MongoClient.connect(db, (err, db) => {
 
 
     // Initializing marked library
-    // Fix for A9 - Insecure Dependencies
-    marked.setOptions({
-        sanitize: true
-    });
+    // Fix for A9 - Insecure Dependencies (marked updated to v4+; sanitize option removed,
+    // output is sanitized by sanitize-html below)
     // Fix for A3 - XSS: sanitize marked HTML output to prevent stored XSS
     app.locals.marked = function(text) {
         var rawHtml = marked(text);
@@ -136,7 +135,7 @@ MongoClient.connect(db, (err, db) => {
     };
 
     // Application routes
-    routes(app, db);
+    routes(app, database);
 
     // Template system setup
     // Fix for A3 - XSS, enable auto escaping

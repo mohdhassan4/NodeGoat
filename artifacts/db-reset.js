@@ -88,12 +88,13 @@ const parseResponse = (err, res, comm) => {
 
 
 // Starting here
-MongoClient.connect(db, (err, db) =>  {
+MongoClient.connect(db, { useUnifiedTopology: true }, (err, client) =>  {
     if (err) {
         console.log("ERROR: connect");
         console.log(JSON.stringify(err));
         process.exit(1);
     }
+    const database = client.db();
     console.log("Connected to the database");
 
     const collectionNames = [
@@ -106,13 +107,13 @@ MongoClient.connect(db, (err, db) =>  {
 
     // remove existing data (if any), we don't want to look for errors here
     console.log("Dropping existing collections");
-    const dropPromises = collectionNames.map((name) => tryDropCollection(db, name));
+    const dropPromises = collectionNames.map((name) => tryDropCollection(database, name));
 
     // Wait for all drops to finish (or fail) before continuing
     Promise.all(dropPromises).then(() => {
-        const usersCol = db.collection("users");
-        const allocationsCol = db.collection("allocations");
-        const countersCol = db.collection("counters");
+        const usersCol = database.collection("users");
+        const allocationsCol = database.collection("allocations");
+        const countersCol = database.collection("counters");
 
         // reset unique id counter
         countersCol.insert({
