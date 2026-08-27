@@ -4,7 +4,7 @@ const express = require("express");
 const favicon = require("serve-favicon");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-// const csrf = require('csurf');
+const csrf = require('csurf');
 const consolidate = require("consolidate"); // Templating library adapter for Express
 const swig = require("swig");
 // const helmet = require("helmet");
@@ -12,20 +12,13 @@ const MongoClient = require("mongodb").MongoClient; // Driver for connecting to 
 const http = require("http");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
-const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
 // Fix for A6-Sensitive Data Exposure
-// Load keys for establishing secure HTTPS connection
+// Load keys for establishing secure HTTPS connection when available
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -34,6 +27,8 @@ MongoClient.connect(db, (err, db) => {
         process.exit(1);
     }
     console.log(`Connected to the database`);
+
+    const app = express(); // Web framework to handle routing requests
 
     /*
     // Fix for A5 - Security MisConfig
@@ -79,10 +74,18 @@ MongoClient.connect(db, (err, db) => {
         // genid: (req) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
+        name: "__session",
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
+        cookie: {
+            secure: process.env.NODE_ENV === "production",
+            httpOnly: true,
+            domain: process.env.COOKIE_DOMAIN || "localhost",
+            maxAge: 24 * 60 * 60 * 1000,
+            path: "/"
+        }
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
@@ -101,7 +104,6 @@ MongoClient.connect(db, (err, db) => {
 
     }));
 
-    /*
     // Fix for A8 - CSRF
     // Enable Express csrf protection
     app.use(csrf());
@@ -110,7 +112,6 @@ MongoClient.connect(db, (err, db) => {
         res.locals.csrftoken = req.csrfToken();
         next();
     });
-    */
 
     // Register templating engine
     app.engine(".html", consolidate.swig);
@@ -141,17 +142,31 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
+    // Use HTTPS when TLS certificates are available, fall back to HTTP for development
+    const tlsKeyPath = process.env.TLS_KEY_PATH;
+    const tlsCertPath = process.env.TLS_CERT_PATH;
 
-    /*
-    // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    // Validate TLS paths are absolute and normalized (no path traversal)
+    function isValidTlsPath(p) {
+        var resolved = path.resolve(p);
+        return path.isAbsolute(p) && resolved === path.normalize(p);
+    }
+
+    if (tlsKeyPath && tlsCertPath &&
+        isValidTlsPath(tlsKeyPath) && isValidTlsPath(tlsCertPath) &&
+        fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
+        const httpsOptions = {
+            key: fs.readFileSync(tlsKeyPath),
+            cert: fs.readFileSync(tlsCertPath)
+        };
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        console.warn("WARNING: TLS paths invalid/missing. Starting insecure HTTP server.");
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port}`);
+        });
+    }
 
 });
