@@ -223,14 +223,8 @@ function SessionHandler(db) {
 
                     //prepare data for the user
                     prepareUserData(user, next);
-                    /*
-                    sessionDAO.startSession(user._id, (err, sessionId) => {
-                        if (err) return next(err);
-                        res.cookie("session", sessionId);
-                        req.session.userId = user._id;
-                        return res.render("dashboard", { ...user, environmentalScripts });
-                    });
-                    */
+                    // Essential cookie (authentication session) - exempt from
+                    // ePrivacy consent per strictly-necessary exception.
                     req.session.regenerate(() => {
                         req.session.userId = user._id;
                         // Set userId property. Required for left nav menu links
