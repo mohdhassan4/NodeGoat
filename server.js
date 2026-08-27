@@ -20,8 +20,8 @@ const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
 
 // Load keys for establishing secure HTTPS connection
-const tlsKeyPath = path.resolve(__dirname, process.env.TLS_KEY_PATH || "./artifacts/cert/server.key");
-const tlsCertPath = path.resolve(__dirname, process.env.TLS_CERT_PATH || "./artifacts/cert/server.crt");
+const tlsKeyPath = path.join(__dirname, "artifacts", "cert", "server.key");
+const tlsCertPath = path.join(__dirname, "artifacts", "cert", "server.crt");
 const tlsAvailable = fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath);
 var httpsOptions = null;
 if (tlsAvailable) {
@@ -156,12 +156,14 @@ MongoClient.connect(db, (err, db) => {
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
         });
-    } else {
-        // Fallback to HTTP only when TLS certs are not available (development)
-        console.log("WARNING: TLS certificates not found, falling back to insecure HTTP");
+    } else if (process.env.NODE_ENV !== "production") {
+        console.log("WARNING: TLS certificates not found, falling back to insecure HTTP (development only)");
         http.createServer(app).listen(port, () => {
             console.log(`Express http server listening on port ${port}`);
         });
+    } else {
+        console.error("FATAL: TLS certificates required in production but not found");
+        process.exit(1);
     }
 
 });
