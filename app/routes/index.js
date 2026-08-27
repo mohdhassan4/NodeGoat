@@ -23,8 +23,22 @@ const index = (app, db) => {
     // Middleware to check if a user is logged in
     const isLoggedIn = sessionHandler.isLoggedInMiddleware;
 
-    //Middleware to check if user has admin rights
-    const isAdmin = sessionHandler.isAdminUserMiddleware;
+    //Middleware to check if user has admin rights and regenerate session on privilege escalation
+    const isAdmin = (req, res, next) => {
+        sessionHandler.isAdminUserMiddleware(req, res, () => {
+            // Regenerate session when escalating to admin context to prevent session fixation
+            if (!req.session.adminSessionRegenerated) {
+                const userId = req.session.userId;
+                return req.session.regenerate((err) => {
+                    if (err) return next(err);
+                    req.session.userId = userId;
+                    req.session.adminSessionRegenerated = true;
+                    return next();
+                });
+            }
+            return next();
+        });
+    };
 
     // The main page of the app
     app.get("/", sessionHandler.displayWelcomePage);
