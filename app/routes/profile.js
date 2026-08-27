@@ -37,6 +37,22 @@ function ProfileHandler(db) {
         });
     };
 
+    this.handleProfileDelete = (req, res, next) => {
+        const {
+            userId
+        } = req.session;
+
+        profile.deleteByUserId(parseInt(userId), (err) => {
+            if (err) return next(err);
+
+            // Destroy the session after deleting user data (GDPR Art. 17 - right to erasure)
+            req.session.destroy((sessionErr) => {
+                if (sessionErr) return next(sessionErr);
+                return res.redirect("/");
+            });
+        });
+    };
+
     this.handleProfileUpdate = (req, res, next) => {
 
         const {

@@ -108,6 +108,15 @@ function ProfileDAO(db) {
             }
         );
     };
+
+    this.deleteByUserId = (userId, callback) => {
+        users.remove({
+            _id: parseInt(userId)
+        }, (err, result) => {
+            if (err) return callback(err, null);
+            return callback(null, result);
+        });
+    };
 }
 
 module.exports = { ProfileDAO };

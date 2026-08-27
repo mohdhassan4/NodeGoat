@@ -61,6 +61,9 @@ const index = (app, db) => {
     app.get("/profile", isLoggedIn, profileHandler.displayProfile);
     app.post("/profile", isLoggedIn, profileHandler.handleProfileUpdate);
 
+    // GDPR Art. 17 - Right to erasure: allows authenticated users to delete their data
+    app.delete("/profile", isLoggedIn, profileHandler.handleProfileDelete);
+
     // Contributions Page
     app.get("/contributions", isLoggedIn, contributionsHandler.displayContributions);
     app.post("/contributions", isLoggedIn, contributionsHandler.handleContributionsUpdate);
