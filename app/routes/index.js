@@ -40,16 +40,43 @@ const index = (app, db) => {
         });
     };
 
+    // Simple in-memory rate limiter for sensitive endpoints
+    const rateLimitStore = {};
+    const createRateLimiter = (windowMs, maxAttempts) => {
+        return (req, res, next) => {
+            var key = req.ip + req.path;
+            var now = Date.now();
+
+            if (!rateLimitStore[key] || rateLimitStore[key].resetTime <= now) {
+                rateLimitStore[key] = { count: 1, resetTime: now + windowMs };
+                return next();
+            }
+
+            rateLimitStore[key].count += 1;
+
+            if (rateLimitStore[key].count > maxAttempts) {
+                return res.status(429).json({
+                    message: "Too many requests, please try again later."
+                });
+            }
+
+            return next();
+        };
+    };
+
+    // Rate limiter: max 50 attempts per 15-minute window per IP
+    const sensitiveEndpointLimiter = createRateLimiter(15 * 60 * 1000, 50);
+
     // The main page of the app
     app.get("/", sessionHandler.displayWelcomePage);
 
     // Login form
     app.get("/login", sessionHandler.displayLoginPage);
-    app.post("/login", sessionHandler.handleLoginRequest);
+    app.post("/login", sensitiveEndpointLimiter, sessionHandler.handleLoginRequest);
 
     // Signup form
     app.get("/signup", sessionHandler.displaySignupPage);
-    app.post("/signup", sessionHandler.handleSignup);
+    app.post("/signup", sensitiveEndpointLimiter, sessionHandler.handleSignup);
 
     // Logout page
     app.get("/logout", sessionHandler.displayLogoutPage);
