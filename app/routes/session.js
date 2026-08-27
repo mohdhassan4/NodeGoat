@@ -55,6 +55,17 @@ function SessionHandler(db) {
             userName,
             password
         } = req.body;
+
+        // Reject non-string userName or password to prevent NoSQL operator injection
+        if (typeof userName !== "string" || typeof password !== "string") {
+            return res.render("login", {
+                userName: "",
+                password: "",
+                loginError: "Invalid username and/or password",
+                environmentalScripts
+            });
+        }
+
         userDAO.validateLogin(userName, password, (err, user) => {
             const errorMessage = "Invalid username and/or password";
             const invalidUserNameErrorMessage = "Invalid username";

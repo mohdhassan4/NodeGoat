@@ -88,8 +88,10 @@ function UserDAO(db) {
             }
         };
 
+        // Defense-in-depth: ensure userName is a string to prevent NoSQL operator injection
+        const safeUserName = typeof userName === "string" ? userName : String(userName);
         usersCol.findOne({
-            userName: userName
+            userName: safeUserName
         }, validateUserDoc);
     };
 
