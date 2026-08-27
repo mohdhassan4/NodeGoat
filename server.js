@@ -41,6 +41,18 @@ MongoClient.connect(db, (err, db) => {
     app.use(helmet());
     app.disable("x-powered-by");
 
+    // Fix for A6 - Sensitive Data Exposure
+    // Enforce HTTPS in production by redirecting plaintext requests
+    // when running behind a TLS-terminating reverse proxy
+    app.set("trust proxy", 1);
+    app.use((req, res, next) => {
+        if (process.env.NODE_ENV === "production" &&
+            req.headers["x-forwarded-proto"] !== "https") {
+            return res.redirect(301, "https://" + req.headers.host + req.url);
+        }
+        next();
+    });
+
     // Adding/ remove HTTP Headers for security
     app.use(favicon(__dirname + "/app/assets/favicon.ico"));
 
