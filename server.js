@@ -84,7 +84,10 @@ MongoClient.connect(db, (err, db) => {
         saveUninitialized: true,
         resave: true,
         cookie: {
-            maxAge: 1800000
+            maxAge: 1800000,
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict"
         }
         /*
         // Fix for A5 - Security MisConfig
