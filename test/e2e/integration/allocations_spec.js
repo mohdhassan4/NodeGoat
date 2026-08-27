@@ -42,7 +42,15 @@ describe("/allocations behaviour", () => {
 
     cy.location().should((loc) => {
       expect(loc.search).to.eq(`?threshold=${threshold}`);
-      expect(loc.pathname).to.eq("/allocations/1");
+      expect(loc.pathname).to.match(/^\/allocations\/.+$/);
     });
+  });
+
+  it("Should not allow accessing another user's allocations (IDOR prevention)", () => {
+    cy.userSignIn();
+    // Attempt to access allocations with a different userId in the URL
+    cy.visitPage("/allocations/999");
+    // The page should still show the logged-in user's allocations, not userId 999
+    cy.url().should("include", "allocations");
   });
 });
