@@ -71,8 +71,8 @@ const index = (app, db) => {
         const url = req.query.url;
         const allowedDomains = ["www.khanacademy.org"];
 
-        // Allow safe relative paths (starting with / but not //)
-        if (url && url.startsWith("/") && !url.startsWith("//")) {
+        // Allow safe relative paths (starting with / but not // or /\)
+        if (url && url.startsWith("/") && !url.startsWith("//") && !url.includes("\\")) {
             return res.redirect(url);
         }
 
