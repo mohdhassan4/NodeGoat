@@ -122,16 +122,13 @@ MongoClient.connect(db, (err, db) => {
 
 
     // Initializing marked library
-    // Fix for A9 - Insecure Dependencies
-    marked.setOptions({
-        sanitize: true
-    });
+    // Fix for A9 - Insecure Dependencies (upgraded to marked 4.x)
 
     // Fix for A3 - XSS: sanitize marked output to prevent stored XSS
-    // marked 0.3.5 sanitize option is bypassable; apply post-processing
+    // Custom post-processing sanitizer (marked 4.x removed the built-in sanitize option)
     const safeMarked = function(text) {
         if (!text) return "";
-        var html = marked(text);
+        var html = marked.parse(text);
         // Remove all tags not in the allowlist of safe markdown-generated tags
         var allowedTags = /^\/?(p|br|strong|em|b|i|u|a|ul|ol|li|h[1-6]|blockquote|code|pre|hr|table|thead|tbody|tr|th|td|img|del|sup|sub|dd|dt|dl)$/i;
         html = html.replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)\b[^>]*?>/g, function(match, tagName) {
