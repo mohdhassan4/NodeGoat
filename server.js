@@ -11,16 +11,12 @@ const swig = require("swig");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const https = require("https");
 const fs = require("fs");
-const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
 
-// TLS certificate paths (hardcoded to project directory)
-const tlsKeyPath = path.join(__dirname, "artifacts", "cert", "server.key");
-const tlsCertPath = path.join(__dirname, "artifacts", "cert", "server.crt");
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -128,10 +124,10 @@ MongoClient.connect(db, (err, db) => {
     });
 
     // Use HTTPS when TLS cert and key are available; fall back to HTTP otherwise
-    if (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath)) {
+    if (fs.existsSync("./artifacts/cert/server.key") && fs.existsSync("./artifacts/cert/server.crt")) {
         const httpsOptions = {
-            key: fs.readFileSync(tlsKeyPath),
-            cert: fs.readFileSync(tlsCertPath)
+            key: fs.readFileSync("./artifacts/cert/server.key"),
+            cert: fs.readFileSync("./artifacts/cert/server.crt")
         };
         https.createServer(httpsOptions, app).listen(port, () => {
             console.log(`Express https server listening on port ${port}`);
