@@ -9,7 +9,6 @@ const consolidate = require("consolidate"); // Templating library adapter for Ex
 const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
-const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
@@ -19,9 +18,28 @@ const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
 
+// Validate that a certificate path resolves within the allowed base directory
+function validateCertPath(certPath, defaultPath, allowedBase) {
+    const resolved = path.resolve(certPath);
+    if (!resolved.startsWith(allowedBase + path.sep)) {
+        console.warn(
+            "Certificate path is outside allowed directory, using default."
+        );
+        return defaultPath;
+    }
+    return resolved;
+}
+
 // Load TLS key and cert from environment variable paths for secure HTTPS connection
-const tlsKeyPath = process.env.TLS_KEY_PATH || path.resolve(__dirname, "./artifacts/cert/server.key");
-const tlsCertPath = process.env.TLS_CERT_PATH || path.resolve(__dirname, "./artifacts/cert/server.crt");
+const certAllowedBase = path.resolve(__dirname);
+const defaultKeyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
+const defaultCertPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
+const tlsKeyPath = process.env.TLS_KEY_PATH
+    ? validateCertPath(process.env.TLS_KEY_PATH, defaultKeyPath, certAllowedBase)
+    : defaultKeyPath;
+const tlsCertPath = process.env.TLS_CERT_PATH
+    ? validateCertPath(process.env.TLS_CERT_PATH, defaultCertPath, certAllowedBase)
+    : defaultCertPath;
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -140,7 +158,7 @@ MongoClient.connect(db, (err, db) => {
     } else {
         console.warn("TLS cert/key not found. Falling back to HTTP. " +
             "Set TLS_KEY_PATH and TLS_CERT_PATH for HTTPS.");
-        http.createServer(app).listen(port, () => {
+        app.listen(port, () => {
             console.log(`Express http server listening on port ${port}`);
         });
     }
