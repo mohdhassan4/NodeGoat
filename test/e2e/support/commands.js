@@ -11,14 +11,16 @@
   Cypress.Commands.add("adminSignIn", () => {
     cy.fixture("users/admin.json").as("admin");
     cy.get("@admin").then(admin => {
-      cy.signIn(admin.user, admin.pass);
+      var pass = Cypress.env("SEED_ADMIN_PASSWORD") || admin.pass;
+      cy.signIn(admin.user, pass);
     });
   });
 
   Cypress.Commands.add("userSignIn", () => {
     cy.fixture("users/user.json").as("user");
     cy.get("@user").then(user => {
-      cy.signIn(user.user, user.pass);
+      var pass = Cypress.env("SEED_USER1_PASSWORD") || user.pass;
+      cy.signIn(user.user, pass);
     });
   });
 

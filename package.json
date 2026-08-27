@@ -32,7 +32,7 @@
     "test:e2e": "cross-env NODE_ENV=test cypress open",
     "test:ci": "cross-env NODE_ENV=test cypress run",
     "test": "node node_modules/grunt-cli/bin/grunt test",
-    "db:seed": "cross-env NODE_ENV=test grunt db-reset",
+    "db:seed": "cross-env NODE_ENV=test SEED_ADMIN_PASSWORD=TestAdmin_e2e!9x SEED_USER1_PASSWORD=TestUser1_e2e!7k SEED_USER2_PASSWORD=TestUser2_e2e!3m grunt db-reset",
     "precommit": "grunt precommit",
     "docker-mongo": "docker run -p 27017:27017 --name mongo  mongo:latest",
     "start-infra": "docker-compose up",
