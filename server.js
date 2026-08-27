@@ -12,7 +12,6 @@ const MongoClient = require("mongodb").MongoClient; // Driver for connecting to 
 const http = require("http");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
-const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
 const { port, db, cookieSecret } = require("./config/config"); // Application config properties
 // Fix for A6-Sensitive Data Exposure
@@ -28,6 +27,8 @@ MongoClient.connect(db, (err, db) => {
         process.exit(1);
     }
     console.log(`Connected to the database`);
+
+    const app = express(); // Web framework to handle routing requests
 
     /*
     // Fix for A5 - Security MisConfig
