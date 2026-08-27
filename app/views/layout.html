@@ -122,9 +122,11 @@
     <script src="/js/tour/redirects-steps.js"></script>
 
     <!-- Load environmental scripts such as live reload -->
+    {% autoescape false %}
     {% for script in environmentalScripts %}
     {{script}}
     {% endfor %}
+    {% endautoescape %}
 
 </body>
 
