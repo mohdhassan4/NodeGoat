@@ -9,13 +9,15 @@ function AllocationsHandler(db) {
     const allocationsDAO = new AllocationsDAO(db);
 
     this.displayAllocations = (req, res, next) => {
-        /*
-        // Fix for A4 Insecure DOR -  take user id from session instead of from URL param
-        const { userId } = req.session;
-        */
         const {
             userId
         } = req.params;
+
+        // Authorization check: verify the requested userId matches the logged-in user
+        if (String(userId) !== String(req.session.userId)) {
+            return res.status(403).send("Forbidden: You are not authorized to view this resource");
+        }
+
         const {
             threshold
         } = req.query;
