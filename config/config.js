@@ -1,13 +1,15 @@
 const _ = require("underscore");
 const util = require("util");
 
-const validEnvironments = ["development", "test", "production"];
 const finalEnv = (process.env.NODE_ENV || "development").toLowerCase();
 
 const allConf = require("./env/all");
-const envConf = validEnvironments.indexOf(finalEnv) !== -1
-    ? require("./env/" + finalEnv)
-    : {};
+const envConfigs = {
+    development: require("./env/development"),
+    test: require("./env/test"),
+    production: require("./env/production")
+};
+const envConf = envConfigs[finalEnv] || {};
 
 const config = { ...allConf, ...envConf };
 
