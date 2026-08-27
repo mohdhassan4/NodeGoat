@@ -8,7 +8,7 @@ module.exports = {
    zapApiFeedbackSpeed: 5000, // Milliseconds.
    environmentalScripts: [
       // jshint -W101
-      `<script>document.write("<script src='http://" + (location.host || "localhost").split(":")[0] + ":35729/livereload.js'></" + "script>");</script>`
+      `<script>(function(){var h=(location.host||"localhost").split(":")[0];if(/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(h)){var s=document.createElement("script");s.src="http://"+h+":35729/livereload.js";document.head.appendChild(s);}})();</script>`
       // jshint +W101
    ]
 };
