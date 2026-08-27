@@ -26,16 +26,35 @@ const index = (app, db) => {
     //Middleware to check if user has admin rights
     const isAdmin = sessionHandler.isAdminUserMiddleware;
 
+    // Rate limiting for sensitive endpoints (brute-force protection)
+    const rateLimitStore = {};
+    const rateLimiter = function(maxAttempts, windowMs) {
+        return function(req, res, next) {
+            const key = req.ip + ":" + req.path;
+            const now = Date.now();
+            if (!rateLimitStore[key] || now - rateLimitStore[key].start > windowMs) {
+                rateLimitStore[key] = { count: 1, start: now };
+            } else {
+                rateLimitStore[key].count++;
+            }
+            if (rateLimitStore[key].count > maxAttempts) {
+                return res.status(429).send("Too many requests, please try again later.");
+            }
+            next();
+        };
+    };
+    const sensitiveRateLimit = rateLimiter(10, 15 * 60 * 1000);
+
     // The main page of the app
     app.get("/", sessionHandler.displayWelcomePage);
 
     // Login form
     app.get("/login", sessionHandler.displayLoginPage);
-    app.post("/login", sessionHandler.handleLoginRequest);
+    app.post("/login", sensitiveRateLimit, sessionHandler.handleLoginRequest);
 
     // Signup form
     app.get("/signup", sessionHandler.displaySignupPage);
-    app.post("/signup", sessionHandler.handleSignup);
+    app.post("/signup", sensitiveRateLimit, sessionHandler.handleSignup);
 
     // Logout page
     app.get("/logout", sessionHandler.displayLogoutPage);
@@ -46,6 +65,28 @@ const index = (app, db) => {
     // Profile page
     app.get("/profile", isLoggedIn, profileHandler.displayProfile);
     app.post("/profile", isLoggedIn, profileHandler.handleProfileUpdate);
+
+    // Account deletion (GDPR Art. 17 - Right to Erasure)
+    app.delete("/account", isLoggedIn, (req, res, next) => {
+        const userId = parseInt(req.session.userId);
+
+        db.collection("users").remove({ _id: userId }, (err) => {
+            if (err) return next(err);
+            db.collection("allocations").remove({ userId: userId }, (err) => {
+                if (err) return next(err);
+                db.collection("contributions").remove({ userId: userId }, (err) => {
+                    if (err) return next(err);
+                    req.session.destroy(() => {
+                        res.clearCookie("connect.sid");
+                        return res.status(200).json({
+                            success: true,
+                            message: "Account and associated data deleted"
+                        });
+                    });
+                });
+            });
+        });
+    });
 
     // Contributions Page
     app.get("/contributions", isLoggedIn, contributionsHandler.displayContributions);
@@ -68,8 +109,26 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Insecure way to handle redirects by taking redirect url from query string
-        return res.redirect(req.query.url);
+        const url = req.query.url;
+        const allowedDomains = ["www.khanacademy.org"];
+
+        // Allow safe relative paths (starting with / but not // or /\)
+        if (url && url.startsWith("/") && !url.startsWith("//") && !url.includes("\\")) {
+            return res.redirect(url);
+        }
+
+        // Allow trusted external domains
+        try {
+            const parsed = new URL(url);
+            if (allowedDomains.indexOf(parsed.hostname) !== -1) {
+                return res.redirect(url);
+            }
+        } catch (e) {
+            // Invalid URL falls through to safe default
+        }
+
+        // Default redirect for unrecognized or missing URLs
+        return res.redirect("/dashboard");
     });
 
     // Research Page

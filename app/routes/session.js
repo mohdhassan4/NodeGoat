@@ -113,13 +113,19 @@ function SessionHandler(db) {
             // by wrapping the below code as a function callback for the method req.session.regenerate()
             // i.e:
             // `req.session.regenerate(() => {})`
-            req.session.userId = user._id;
-            return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            req.session.regenerate((err) => {
+                if (err) return next(err);
+                req.session.userId = user._id;
+                return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            });
         });
     };
 
     this.displayLogoutPage = (req, res) => {
-        req.session.destroy(() => res.redirect("/"));
+        req.session.destroy(() => {
+            res.clearCookie("connect.sid");
+            return res.redirect("/");
+        });
     };
 
     this.displaySignupPage = (req, res) => {
@@ -223,14 +229,8 @@ function SessionHandler(db) {
 
                     //prepare data for the user
                     prepareUserData(user, next);
-                    /*
-                    sessionDAO.startSession(user._id, (err, sessionId) => {
-                        if (err) return next(err);
-                        res.cookie("session", sessionId);
-                        req.session.userId = user._id;
-                        return res.render("dashboard", { ...user, environmentalScripts });
-                    });
-                    */
+                    // Essential cookie (authentication session) - exempt from
+                    // ePrivacy consent per strictly-necessary exception.
                     req.session.regenerate(() => {
                         req.session.userId = user._id;
                         // Set userId property. Required for left nav menu links
