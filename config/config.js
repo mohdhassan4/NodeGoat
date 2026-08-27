@@ -1,15 +1,21 @@
-const _ = require("underscore");
-const path = require("path");
-const util = require("util");
+var util = require("util");
 
-const finalEnv = process.env.NODE_ENV || "development";
+var finalEnv = (process.env.NODE_ENV || "development").toLowerCase();
 
-const allConf = require(path.resolve(__dirname + "/../config/env/all.js"));
-const envConf = require(path.resolve(__dirname + "/../config/env/" + finalEnv.toLowerCase() + ".js")) || {};
+var allConf = require("../config/env/all.js");
 
-const config = { ...allConf, ...envConf };
+var envConf = {};
+if (finalEnv === "development") {
+    envConf = require("../config/env/development.js");
+} else if (finalEnv === "production") {
+    envConf = require("../config/env/production.js");
+} else if (finalEnv === "test") {
+    envConf = require("../config/env/test.js");
+}
 
-console.log(`Current Config:`);
+var config = Object.assign({}, allConf, envConf);
+
+console.log("Current Config:");
 console.log(util.inspect(config, false, null));
 
 module.exports = config;
