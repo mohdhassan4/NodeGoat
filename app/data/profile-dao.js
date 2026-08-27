@@ -12,32 +12,41 @@ function ProfileDAO(db) {
 
     const users = db.collection("users");
 
-    /* Fix for A6 - Sensitive Data Exposure
-
-    // Use crypto module to save sensitive data such as ssn, dob in encrypted format
+    // Encrypt sensitive PII at rest (A6 - Sensitive Data Exposure)
     const crypto = require("crypto");
     const config = require("../../config/config");
 
-    /// Helper method create initialization vector
-    // By default the initialization vector is not secure enough, so we create our own
-    const createIV = () => {
-        // create a random salt for the PBKDF2 function - 16 bytes is the minimum length according to NIST
-        const salt = crypto.randomBytes(16);
-        return crypto.pbkdf2Sync(config.cryptoKey, salt, 100000, 512, "sha512");
+    // Derive a 32-byte key from config.cryptoKey for AES-256-CBC
+    const derivedKey = crypto.createHash("sha256")
+        .update(config.cryptoKey)
+        .digest();
+
+    // Encrypt a plaintext string; returns "iv_hex:ciphertext_hex"
+    const encrypt = (plaintext) => {
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv(
+            "aes-256-cbc", derivedKey, iv
+        );
+        let encrypted = cipher.update(plaintext, "utf8", "hex");
+        encrypted += cipher.final("hex");
+        return iv.toString("hex") + ":" + encrypted;
     };
 
-    // Helper methods to encryt / decrypt
-    const encrypt = (toEncrypt) => {
-        config.iv = createIV();
-        const cipher = crypto.createCipheriv(config.cryptoAlgo, config.cryptoKey, config.iv);
-        return `${cipher.update(toEncrypt, "utf8", "hex")} ${cipher.final("hex")}`;
+    // Decrypt a stored value of the form "iv_hex:ciphertext_hex"
+    const decrypt = (stored) => {
+        if (!stored || stored.indexOf(":") === -1) {
+            return stored || "";
+        }
+        const parts = stored.split(":");
+        const iv = Buffer.from(parts[0], "hex");
+        const encryptedText = parts[1];
+        const decipher = crypto.createDecipheriv(
+            "aes-256-cbc", derivedKey, iv
+        );
+        let decrypted = decipher.update(encryptedText, "hex", "utf8");
+        decrypted += decipher.final("utf8");
+        return decrypted;
     };
-
-    const decrypt = (toDecrypt) => {
-        const decipher = crypto.createDecipheriv(config.cryptoAlgo, config.cryptoKey, config.iv);
-        return `${decipher.update(toDecrypt, "hex", "utf8")} ${decipher.final("utf8")}`;
-    };
-    */
 
     this.updateUser = (userId, firstName, lastName, ssn, dob, address, bankAcc, bankRouting, website, callback) => {
 
@@ -52,32 +61,35 @@ function ProfileDAO(db) {
         if (address) {
             user.address = address;
         }
+        // Encrypt sensitive PII before storing
         if (bankAcc) {
-            user.bankAcc = bankAcc;
+            user.bankAcc = encrypt(bankAcc);
         }
         if (bankRouting) {
-            user.bankRouting = bankRouting;
+            user.bankRouting = encrypt(bankRouting);
         }
         if (ssn) {
-            user.ssn = ssn;
+            user.ssn = encrypt(ssn);
         }
         if (dob) {
-            user.dob = dob;
+            user.dob = encrypt(dob);
         }
         // Only store website if it has a safe scheme (validated by caller)
         if (website) {
             user.website = website;
         }
-        /*
-        // Fix for A7 - Sensitive Data Exposure
-        // Store encrypted ssn and DOB
-        if(ssn) {
-            user.ssn = encrypt(ssn);
-        }
-        if(dob) {
-            user.dob = encrypt(dob);
-        }
-        */
+
+        // Keep plaintext values for the response rendered back to the user
+        const responseUser = {
+            firstName: firstName || undefined,
+            lastName: lastName || undefined,
+            address: address || undefined,
+            bankAcc: bankAcc || undefined,
+            bankRouting: bankRouting || undefined,
+            ssn: ssn || undefined,
+            dob: dob || undefined,
+            website: website || undefined
+        };
 
         users.update({
                 _id: parseInt(userId)
@@ -87,7 +99,7 @@ function ProfileDAO(db) {
             err => {
                 if (!err) {
                     console.log("Updated user profile");
-                    return callback(null, user);
+                    return callback(null, responseUser);
                 }
 
                 return callback(err, null);
@@ -101,13 +113,15 @@ function ProfileDAO(db) {
             },
             (err, user) => {
                 if (err) return callback(err, null);
-                /*
-                // Fix for A6 - Sensitive Data Exposure
-                // Decrypt ssn and DOB values to display to user
-                user.ssn = user.ssn ? decrypt(user.ssn) : "";
-                user.dob = user.dob ? decrypt(user.dob) : "";
-                */
-
+                if (user) {
+                    // Decrypt sensitive PII fields for display
+                    user.ssn = user.ssn ? decrypt(user.ssn) : "";
+                    user.dob = user.dob ? decrypt(user.dob) : "";
+                    user.bankAcc = user.bankAcc ?
+                        decrypt(user.bankAcc) : "";
+                    user.bankRouting = user.bankRouting ?
+                        decrypt(user.bankRouting) : "";
+                }
                 callback(null, user);
             }
         );
