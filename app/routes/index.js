@@ -8,6 +8,49 @@ const ResearchHandler = require("./research");
 const tutorialRouter = require("./tutorial");
 const ErrorHandler = require("./error").errorHandler;
 
+// Fix for CWE-307: In-memory login rate limiter to prevent brute-force attacks
+const loginAttempts = new Map();
+const LOGIN_RATE_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const LOGIN_RATE_MAX_ATTEMPTS = 5; // max attempts per window per IP
+
+const loginRateLimiter = (req, res, next) => {
+    "use strict";
+
+    const ip = req.ip || req.connection.remoteAddress;
+    const now = Date.now();
+    let record = loginAttempts.get(ip);
+
+    if (!record || (now - record.windowStart) > LOGIN_RATE_WINDOW_MS) {
+        record = { windowStart: now, count: 0 };
+        loginAttempts.set(ip, record);
+    }
+
+    record.count += 1;
+
+    if (record.count > LOGIN_RATE_MAX_ATTEMPTS) {
+        return res.status(429).render("login", {
+            userName: "",
+            password: "",
+            loginError: "Too many login attempts. Please try again after 15 minutes.",
+            environmentalScripts: require("../../config/config").environmentalScripts
+        });
+    }
+
+    return next();
+};
+
+// Periodically clean up expired entries to prevent memory leaks
+setInterval(() => {
+    "use strict";
+
+    const now = Date.now();
+    loginAttempts.forEach((record, ip) => {
+        if ((now - record.windowStart) > LOGIN_RATE_WINDOW_MS) {
+            loginAttempts.delete(ip);
+        }
+    });
+}, LOGIN_RATE_WINDOW_MS);
+
 const index = (app, db) => {
 
     "use strict";
@@ -31,7 +74,7 @@ const index = (app, db) => {
 
     // Login form
     app.get("/login", sessionHandler.displayLoginPage);
-    app.post("/login", sessionHandler.handleLoginRequest);
+    app.post("/login", loginRateLimiter, sessionHandler.handleLoginRequest);
 
     // Signup form
     app.get("/signup", sessionHandler.displaySignupPage);
