@@ -84,13 +84,13 @@ function ResearchHandler(db) {
             return needle.get(url, (error, newResponse, body) => {
                 if (!error && newResponse.statusCode === 200) {
                     res.writeHead(200, {
-                        "Content-Type": "text/html"
+                        "Content-Type": "text/plain"
                     });
                 }
-                res.write("<h1>The following is the stock information you requested.</h1>\n\n");
+                res.write("The following is the stock information you requested.\n\n");
                 res.write("\n\n");
                 if (body) {
-                    res.write(body);
+                    res.write(typeof body === "string" ? body : String(body));
                 }
                 return res.end();
             });
