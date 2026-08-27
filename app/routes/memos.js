@@ -9,8 +9,15 @@ function MemosHandler(db) {
     const memosDAO = new MemosDAO(db);
 
     this.addMemos = (req, res, next) => {
+        // Sanitize memo input to prevent stored XSS
+        const sanitizedMemo = req.body.memo
+            ? req.body.memo.replace(/[<>'"&]/g, (ch) => {
+                const map = {"<": "&lt;", ">": "&gt;", "'": "&#x27;", "\"": "&quot;", "&": "&amp;"};
+                return map[ch];
+            })
+            : "";
 
-        memosDAO.insert(req.body.memo, (err, docs) => {
+        memosDAO.insert(sanitizedMemo, (err, docs) => {
             if (err) return next(err);
             this.displayMemos(req, res, next);
         });

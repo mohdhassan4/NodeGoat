@@ -265,9 +265,13 @@ function SessionHandler(db) {
 
         userDAO.getUserById(userId, (err, doc) => {
             if (err) return next(err);
-            doc.userId = userId;
             return res.render("dashboard", {
-                ...doc,
+                userName: doc.userName,
+                firstName: doc.firstName,
+                lastName: doc.lastName,
+                email: doc.email,
+                isAdmin: doc.isAdmin,
+                userId: userId,
                 environmentalScripts
             });
         });
