@@ -1,16 +1,16 @@
 const _ = require("underscore");
-const path = require("path");
 const util = require("util");
 
-const finalEnv = process.env.NODE_ENV || "development";
+const allConf = require("../config/env/all.js");
 
-const allowedEnvs = ["development", "production", "test"];
-const normalizedEnv = finalEnv.toLowerCase();
+const envConfigs = {
+    development: require("../config/env/development.js"),
+    production: require("../config/env/production.js"),
+    test: require("../config/env/test.js")
+};
 
-const allConf = require(path.resolve(__dirname + "/../config/env/all.js"));
-const envConf = allowedEnvs.indexOf(normalizedEnv) !== -1
-    ? require(path.resolve(__dirname + "/../config/env/" + normalizedEnv + ".js"))
-    : {};
+const normalizedEnv = (process.env.NODE_ENV || "development").toLowerCase();
+const envConf = envConfigs[normalizedEnv] || {};
 
 const config = { ...allConf, ...envConf };
 
