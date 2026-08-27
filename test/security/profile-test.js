@@ -34,7 +34,7 @@ var state = {
 };
 
 var sutUserName = "user1";
-var sutUserPassword = "User1_123";
+var sutUserPassword = process.env.SUT_USER_PASSWORD || "test-placeholder-not-a-real-secret";
 
 chrome.setDefaultService(service);
 
