@@ -11,6 +11,7 @@ const swig = require("swig");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
 const marked = require("marked");
+const sanitizeHtml = require("sanitize-html");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
@@ -126,7 +127,18 @@ MongoClient.connect(db, (err, db) => {
     marked.setOptions({
         sanitize: true
     });
-    app.locals.marked = marked;
+    // Fix for A3 - XSS: sanitize marked HTML output to prevent stored XSS
+    app.locals.marked = function(text) {
+        var rawHtml = marked(text);
+        return sanitizeHtml(rawHtml, {
+            allowedTags: sanitizeHtml.defaults.allowedTags.concat(["h1", "h2", "img"]),
+            allowedAttributes: {
+                "a": ["href", "name", "target"],
+                "img": ["src", "alt", "title"]
+            },
+            allowedSchemes: ["http", "https", "mailto"]
+        });
+    };
 
     // Application routes
     routes(app, db);
