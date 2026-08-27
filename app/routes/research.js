@@ -13,13 +13,25 @@ function ResearchHandler(db) {
 
         if (req.query.symbol) {
             const url = req.query.url + req.query.symbol;
+
+            // Validate URL scheme - only allow http and https
+            let parsedUrl;
+            try {
+                parsedUrl = new URL(url);
+            } catch (e) {
+                return res.status(400).end("Invalid URL");
+            }
+            if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+                return res.status(400).end("Only http and https URLs are allowed");
+            }
+
             return needle.get(url, (error, newResponse, body) => {
                 if (!error && newResponse.statusCode === 200) {
                     res.writeHead(200, {
-                        "Content-Type": "text/html"
+                        "Content-Type": "text/plain"
                     });
                 }
-                res.write("<h1>The following is the stock information you requested.</h1>\n\n");
+                res.write("The following is the stock information you requested.\n\n");
                 res.write("\n\n");
                 if (body) {
                     res.write(body);

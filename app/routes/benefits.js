@@ -2,6 +2,9 @@ const {
     BenefitsDAO
 } = require("../data/benefits-dao");
 const {
+    UserDAO
+} = require("../data/user-dao");
+const {
     environmentalScripts
 } = require("../../config/config");
 
@@ -9,6 +12,7 @@ function BenefitsHandler(db) {
     "use strict";
 
     const benefitsDAO = new BenefitsDAO(db);
+    const userDAO = new UserDAO(db);
 
     this.displayBenefits = (req, res, next) => {
 
@@ -27,28 +31,41 @@ function BenefitsHandler(db) {
     };
 
     this.updateBenefits = (req, res, next) => {
-        const {
-            userId,
-            benefitStartDate
-        } = req.body;
+        // Verify the requesting user has admin privileges
+        const sessionUserId = req.session.userId;
+        if (!sessionUserId) {
+            return res.redirect("/login");
+        }
 
-        benefitsDAO.updateBenefits(userId, benefitStartDate, (error) => {
+        userDAO.getUserById(sessionUserId, (err, currentUser) => {
+            if (err) return next(err);
+            if (!currentUser || !currentUser.isAdmin) {
+                return res.redirect("/login");
+            }
 
-            if (error) return next(error);
+            const {
+                userId,
+                benefitStartDate
+            } = req.body;
 
-            benefitsDAO.getAllNonAdminUsers((error, users) => {
+            benefitsDAO.updateBenefits(userId, benefitStartDate, (error) => {
+
                 if (error) return next(error);
 
-                const data = {
-                    users,
-                    user: {
-                        isAdmin: true
-                    },
-                    updateSuccess: true,
-                    environmentalScripts
-                };
+                benefitsDAO.getAllNonAdminUsers((error, users) => {
+                    if (error) return next(error);
 
-                return res.render("benefits", data);
+                    const data = {
+                        users,
+                        user: {
+                            isAdmin: true
+                        },
+                        updateSuccess: true,
+                        environmentalScripts
+                    };
+
+                    return res.render("benefits", data);
+                });
             });
         });
     };
