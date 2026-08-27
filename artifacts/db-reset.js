@@ -12,6 +12,7 @@ const { db } = require("../config/config");
 
 const hashPassword = (password) => bcrypt.hashSync(password, bcrypt.genSaltSync());
 
+// seed-only: default development credentials — NOT for production use
 const USERS_TO_INSERT = [
     {
         "_id": 1,
