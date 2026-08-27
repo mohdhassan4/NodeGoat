@@ -67,9 +67,18 @@ const index = (app, db) => {
     app.post("/memos", isLoggedIn, memosHandler.addMemos);
 
     // Handle redirect for learning resources link
+    const allowedRedirects = {
+        "/dashboard": "/dashboard",
+        "/benefits": "/benefits",
+        "/contributions": "/contributions",
+        "/memos": "/memos",
+        "/research": "/research",
+        "/profile": "/profile"
+    };
+
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Insecure way to handle redirects by taking redirect url from query string
-        return res.redirect(req.query.url);
+        var destination = allowedRedirects[req.query.url] || "/";
+        return res.redirect(destination);
     });
 
     // Research Page
