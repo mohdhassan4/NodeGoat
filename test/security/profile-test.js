@@ -11,11 +11,16 @@ var webDriver;
 var chrome = require("selenium-webdriver/chrome");
 var test = require("selenium-webdriver/testing");
 var proxy = require("selenium-webdriver/proxy");
+var fs = require("fs");
+var nodePath = require("path");
 var path = chromeDriver.path;
 var service = new chrome.ServiceBuilder(path).build();
 
 // SUT is an acronym for System Under Test.
-var sutProtocol = "http://";
+var tlsKeyPath = nodePath.resolve(__dirname, "../../artifacts/cert/server.key");
+var tlsCertPath = nodePath.resolve(__dirname, "../../artifacts/cert/server.crt");
+var sutProtocol = (fs.existsSync(tlsKeyPath) && fs.existsSync(tlsCertPath))
+    ? "https://" : "http://";
 var zapTargetApp = sutProtocol + config.hostName + ":" + config.port + "/";
 var zapOptions = {
     proxy: (sutProtocol + config.zapHostName + ":" + config.zapPort + "/"),
@@ -26,7 +31,6 @@ var zaproxy = new ZapClient(zapOptions);
 var zapTargetAppRoute = "profile";
 var zapTargetAppAndRoute = zapTargetApp + zapTargetAppRoute;
 var zapApiKey = config.zapApiKey;
-var fs = require("fs");
 
 var state = {
     description: "",
@@ -47,13 +51,16 @@ chrome.setDefaultService(service);
 test.before(function() {
     "use strict";
     this.timeout(20000);
+    var capabilities = seleniumWebdriver.Capabilities.chrome();
+    capabilities.set("acceptInsecureCerts", true);
     webDriver = new seleniumWebdriver.Builder()
-        .withCapabilities(seleniumWebdriver.Capabilities.chrome())
+        .withCapabilities(capabilities)
         // http://code.tutsplus.com/tutorials/an-introduction-to-webdriver-using-the-javascript-bindings--cms-21855
         // Proxy all requests through Zap before using Zap to find vulnerabilities,
         // otherwise Zap will say: "URL not found in the scan tree".
         .setProxy(proxy.manual({
-            http: config.zapHostName + ":" + config.zapPort
+            http: config.zapHostName + ":" + config.zapPort,
+            https: config.zapHostName + ":" + config.zapPort
         }))
         .build();
     webDriver.getWindowHandle();
