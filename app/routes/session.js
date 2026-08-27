@@ -11,6 +11,37 @@ function SessionHandler(db) {
     const userDAO = new UserDAO(db);
     const allocationsDAO = new AllocationsDAO(db);
 
+    // Rate limiting for login: track failed attempts per IP
+    const loginAttempts = new Map();
+    const maxAttempts = 5;
+    const lockoutDurationMs = 15 * 60 * 1000; // 15 minutes
+
+    const cleanupAttempts = (ip) => {
+        const record = loginAttempts.get(ip);
+        if (record && (Date.now() - record.lastAttempt) > lockoutDurationMs) {
+            loginAttempts.delete(ip);
+        }
+    };
+
+    this.loginRateLimiter = (req, res, next) => {
+        const ip = req.ip || req.connection.remoteAddress;
+        cleanupAttempts(ip);
+        const record = loginAttempts.get(ip);
+        if (record && record.count >= maxAttempts) {
+            const elapsed = Date.now() - record.lastAttempt;
+            if (elapsed < lockoutDurationMs) {
+                return res.status(429).render("login", {
+                    userName: "",
+                    password: "",
+                    loginError: "Maximum login attempts exceeded. Please try again later.",
+                    environmentalScripts
+                });
+            }
+            loginAttempts.delete(ip);
+        }
+        return next();
+    };
+
     const prepareUserData = (user, next) => {
         // Generate random allocations
         const stocks = Math.floor((Math.random() * 40) + 1);
@@ -55,11 +86,29 @@ function SessionHandler(db) {
             userName,
             password
         } = req.body;
+        const ip = req.ip || req.connection.remoteAddress;
+
+        // Reject non-string userName or password to prevent NoSQL operator injection
+        if (typeof userName !== "string" || typeof password !== "string") {
+            return res.render("login", {
+                userName: "",
+                password: "",
+                loginError: "Invalid username and/or password",
+                environmentalScripts
+            });
+        }
+
         userDAO.validateLogin(userName, password, (err, user) => {
             const errorMessage = "Invalid username and/or password";
             const invalidUserNameErrorMessage = "Invalid username";
             const invalidPasswordErrorMessage = "Invalid password";
             if (err) {
+                // Record failed login attempt for rate limiting
+                const record = loginAttempts.get(ip) || {count: 0, lastAttempt: 0};
+                record.count += 1;
+                record.lastAttempt = Date.now();
+                loginAttempts.set(ip, record);
+
                 if (err.noSuchUser) {
                     console.log("Error: attempt to login with invalid user: ", userName);
 
@@ -101,6 +150,9 @@ function SessionHandler(db) {
                 }
             }
 
+            // Reset failed login attempts on successful authentication
+            loginAttempts.delete(ip);
+
             // A2-Broken Authentication and Session Management
             // Upon login, a security best practice with regards to cookies session management
             // would be to regenerate the session id so that if an id was already created for
@@ -113,8 +165,11 @@ function SessionHandler(db) {
             // by wrapping the below code as a function callback for the method req.session.regenerate()
             // i.e:
             // `req.session.regenerate(() => {})`
-            req.session.userId = user._id;
-            return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            req.session.regenerate((err) => {
+                if (err) return next(err);
+                req.session.userId = user._id;
+                return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            });
         });
     };
 

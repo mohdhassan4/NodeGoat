@@ -9,8 +9,17 @@ function MemosHandler(db) {
     const memosDAO = new MemosDAO(db);
 
     this.addMemos = (req, res, next) => {
+        // Input validation: ensure memo is a string and sanitize
+        var memo = req.body.memo;
+        if (typeof memo !== "string") {
+            memo = "";
+        }
+        memo = memo.trim().substring(0, 10000);
+        // Encode opening angle brackets to prevent storing raw HTML/XSS payloads
+        // Preserves > for markdown blockquotes since > alone cannot open an HTML tag
+        memo = memo.replace(/</g, "&lt;");
 
-        memosDAO.insert(req.body.memo, (err, docs) => {
+        memosDAO.insert(memo, (err, docs) => {
             if (err) return next(err);
             this.displayMemos(req, res, next);
         });

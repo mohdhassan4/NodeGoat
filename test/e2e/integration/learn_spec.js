@@ -17,4 +17,16 @@ describe("/learn behaviour", () => {
     cy.visitPage("/learn?url=/dashboard");
     cy.url().should("include", "dashboard");
   });
+
+  it("Should reject absolute external URLs and redirect to /", () => {
+    cy.userSignIn();
+    cy.visitPage("/learn?url=http://evil.com");
+    cy.url().should("not.include", "evil.com");
+  });
+
+  it("Should reject protocol-relative URLs and redirect to /", () => {
+    cy.userSignIn();
+    cy.visitPage("/learn?url=//evil.com");
+    cy.url().should("not.include", "evil.com");
+  });
 });

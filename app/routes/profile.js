@@ -1,5 +1,4 @@
 const ProfileDAO = require("../data/profile-dao").ProfileDAO;
-const ESAPI = require("node-esapi");
 const {
     environmentalScripts
 } = require("../../config/config");
@@ -9,6 +8,14 @@ function ProfileHandler(db) {
     "use strict";
 
     const profile = new ProfileDAO(db);
+
+    // Build a safe Google search URL from a name, allowing only safe schemes in href context
+    function buildSafeProfileSearchURL(name) {
+        if (!name || typeof name !== "string") {
+            return "https://www.google.com/search?q=";
+        }
+        return "https://www.google.com/search?q=" + encodeURIComponent(name);
+    }
 
     this.displayProfile = (req, res, next) => {
         const {
@@ -21,17 +28,16 @@ function ProfileHandler(db) {
             if (err) return next(err);
             doc.userId = userId;
 
-            // @TODO @FIXME
-            // while the developer intentions were correct in encoding the user supplied input so it
-            // doesn't end up as an XSS attack, the context is incorrect as it is encoding the firstname for HTML
-            // while this same variable is also used in the context of a URL link element
-            doc.website = ESAPI.encoder().encodeForHTML(doc.website);
-            // fix it by replacing the above with another template variable that is used for 
-            // the context of a URL in a link header
-            // doc.website = ESAPI.encoder().encodeForURL(doc.website)
+            // Swig autoescape is now enabled globally, so template variables are
+            // automatically HTML-encoded. No manual ESAPI encoding needed here.
+
+            // Build a safe URL for the href context (HTML encoding alone does not
+            // neutralize javascript: URIs in href attributes).
+            var firstNameSafeURLString = buildSafeProfileSearchURL(doc.firstName);
 
             return res.render("profile", {
                 ...doc,
+                firstNameSafeURLString,
                 environmentalScripts
             });
         });
@@ -55,16 +61,17 @@ function ProfileHandler(db) {
         // with an exponential time until it completes
         // --
         // The Fix: Instead of using greedy quantifiers the same regex will work if we omit the second quantifier +
-        // const regexPattern = /([0-9]+)\#/;
-        const regexPattern = /([0-9]+)+\#/;
+        const regexPattern = /([0-9]+)\#/;
         // Allow only numbers with a suffix of the letter #, for example: 'XXXXXX#'
         const testComplyWithRequirements = regexPattern.test(bankRouting);
         // if the regex test fails we do not allow saving
         if (testComplyWithRequirements !== true) {
             const firstNameSafeString = firstName;
+            var firstNameSafeURLString = buildSafeProfileSearchURL(firstName);
             return res.render("profile", {
                 updateError: "Bank Routing number does not comply with requirements for format specified",
                 firstNameSafeString,
+                firstNameSafeURLString,
                 lastName,
                 ssn,
                 dob,
@@ -97,8 +104,11 @@ function ProfileHandler(db) {
                 user.updateSuccess = true;
                 user.userId = userId;
 
+                var firstNameSafeURLString = buildSafeProfileSearchURL(user.firstName);
+
                 return res.render("profile", {
                     ...user,
+                    firstNameSafeURLString,
                     environmentalScripts
                 });
             }
