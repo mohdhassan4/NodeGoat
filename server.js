@@ -126,7 +126,23 @@ MongoClient.connect(db, (err, db) => {
     marked.setOptions({
         sanitize: true
     });
-    app.locals.marked = marked;
+
+    // Fix for A3 - XSS: Sanitize marked output to prevent stored XSS
+    // The sanitize option in marked is deprecated and has known bypasses,
+    // so we add output sanitization to strip dangerous HTML patterns.
+    const safeMarked = function(text) {
+        if (!text) return "";
+        var html = marked(text);
+        // Remove script tags and their content
+        html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+        // Remove event handler attributes (onclick, onerror, onload, etc.)
+        html = html.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "");
+        // Neutralize javascript:, vbscript:, and data: protocol URLs
+        html = html.replace(/(href|src|action)\s*=\s*["']\s*(javascript|vbscript|data)\s*:/gi,
+            "$1=\"#sanitized:");
+        return html;
+    };
+    app.locals.marked = safeMarked;
 
     // Application routes
     routes(app, db);
