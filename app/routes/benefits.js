@@ -1,6 +1,7 @@
 const {
     BenefitsDAO
 } = require("../data/benefits-dao");
+const UserDAO = require("../data/user-dao").UserDAO;
 const {
     environmentalScripts
 } = require("../../config/config");
@@ -9,19 +10,27 @@ function BenefitsHandler(db) {
     "use strict";
 
     const benefitsDAO = new BenefitsDAO(db);
+    const userDAO = new UserDAO(db);
 
     this.displayBenefits = (req, res, next) => {
+        const {
+            userId
+        } = req.session;
 
-        benefitsDAO.getAllNonAdminUsers((error, users) => {
-
+        userDAO.getUserById(userId, (error, user) => {
             if (error) return next(error);
 
-            return res.render("benefits", {
-                users,
-                user: {
-                    isAdmin: true
-                },
-                environmentalScripts
+            benefitsDAO.getAllNonAdminUsers((error, users) => {
+
+                if (error) return next(error);
+
+                return res.render("benefits", {
+                    users,
+                    user: {
+                        isAdmin: user.isAdmin
+                    },
+                    environmentalScripts
+                });
             });
         });
     };
@@ -31,24 +40,29 @@ function BenefitsHandler(db) {
             userId,
             benefitStartDate
         } = req.body;
+        const sessionUserId = req.session.userId;
 
-        benefitsDAO.updateBenefits(userId, benefitStartDate, (error) => {
-
+        userDAO.getUserById(sessionUserId, (error, user) => {
             if (error) return next(error);
 
-            benefitsDAO.getAllNonAdminUsers((error, users) => {
+            benefitsDAO.updateBenefits(userId, benefitStartDate, (error) => {
+
                 if (error) return next(error);
 
-                const data = {
-                    users,
-                    user: {
-                        isAdmin: true
-                    },
-                    updateSuccess: true,
-                    environmentalScripts
-                };
+                benefitsDAO.getAllNonAdminUsers((error, users) => {
+                    if (error) return next(error);
 
-                return res.render("benefits", data);
+                    const data = {
+                        users,
+                        user: {
+                            isAdmin: user.isAdmin
+                        },
+                        updateSuccess: true,
+                        environmentalScripts
+                    };
+
+                    return res.render("benefits", data);
+                });
             });
         });
     };

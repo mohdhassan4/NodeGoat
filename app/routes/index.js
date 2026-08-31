@@ -52,15 +52,12 @@ const index = (app, db) => {
     app.post("/contributions", isLoggedIn, contributionsHandler.handleContributionsUpdate);
 
     // Benefits Page
-    app.get("/benefits", isLoggedIn, benefitsHandler.displayBenefits);
-    app.post("/benefits", isLoggedIn, benefitsHandler.updateBenefits);
-    /* Fix for A7 - checks user role to implement  Function Level Access Control
-     app.get("/benefits", isLoggedIn, isAdmin, benefitsHandler.displayBenefits);
-     app.post("/benefits", isLoggedIn, isAdmin, benefitsHandler.updateBenefits);
-     */
+    // Fix for A7 - checks user role to implement Function Level Access Control
+    app.get("/benefits", isLoggedIn, isAdmin, benefitsHandler.displayBenefits);
+    app.post("/benefits", isLoggedIn, isAdmin, benefitsHandler.updateBenefits);
 
     // Allocations Page
-    app.get("/allocations/:userId", isLoggedIn, allocationsHandler.displayAllocations);
+    app.get("/allocations", isLoggedIn, allocationsHandler.displayAllocations);
 
     // Memos Page
     app.get("/memos", isLoggedIn, memosHandler.displayMemos);
@@ -68,8 +65,22 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Insecure way to handle redirects by taking redirect url from query string
-        return res.redirect(req.query.url);
+        // Fixed: Validate redirect URL to prevent open redirect
+        const url = req.query.url || "/";
+        const allowedPaths = ["/tutorial", "/research", "/dashboard", "/profile", "/contributions"];
+        const allowedDomains = ["https://owasp.org", "https://nodejs.org"];
+
+        // Check if it's a relative path from allowlist
+        const isAllowedPath = allowedPaths.some(path => url.startsWith(path));
+        // Check if it's an allowed external domain
+        const isAllowedDomain = allowedDomains.some(domain => url.startsWith(domain));
+
+        if (isAllowedPath || isAllowedDomain) {
+            return res.redirect(url);
+        }
+
+        // Default to dashboard if URL is not allowed
+        return res.redirect("/dashboard");
     });
 
     // Research Page

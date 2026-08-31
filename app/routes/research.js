@@ -12,7 +12,20 @@ function ResearchHandler(db) {
     this.displayResearch = (req, res) => {
 
         if (req.query.symbol) {
-            const url = req.query.url + req.query.symbol;
+            // Fixed: Validate URL to prevent SSRF attacks
+            const baseUrl = req.query.url || "";
+            const allowedDomains = ["https://api.example.com", "https://finance.yahoo.com"];
+
+            // Check if baseUrl starts with an allowed domain
+            const isAllowed = allowedDomains.some(domain => baseUrl.startsWith(domain));
+
+            if (!isAllowed) {
+                res.writeHead(400, {"Content-Type": "text/html"});
+                res.write("<h1>Error: Invalid or disallowed URL</h1>");
+                return res.end();
+            }
+
+            const url = baseUrl + req.query.symbol;
             return needle.get(url, (error, newResponse, body) => {
                 if (!error && newResponse.statusCode === 200) {
                     res.writeHead(200, {

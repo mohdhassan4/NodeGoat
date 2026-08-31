@@ -21,14 +21,8 @@ function ProfileHandler(db) {
             if (err) return next(err);
             doc.userId = userId;
 
-            // @TODO @FIXME
-            // while the developer intentions were correct in encoding the user supplied input so it
-            // doesn't end up as an XSS attack, the context is incorrect as it is encoding the firstname for HTML
-            // while this same variable is also used in the context of a URL link element
-            doc.website = ESAPI.encoder().encodeForHTML(doc.website);
-            // fix it by replacing the above with another template variable that is used for 
-            // the context of a URL in a link header
-            // doc.website = ESAPI.encoder().encodeForURL(doc.website)
+            // Fixed: Use URL encoding for URL context to prevent javascript: protocol injection
+            doc.website = ESAPI.encoder().encodeForURL(doc.website);
 
             return res.render("profile", {
                 ...doc,
@@ -55,8 +49,8 @@ function ProfileHandler(db) {
         // with an exponential time until it completes
         // --
         // The Fix: Instead of using greedy quantifiers the same regex will work if we omit the second quantifier +
-        // const regexPattern = /([0-9]+)\#/;
-        const regexPattern = /([0-9]+)+\#/;
+        const regexPattern = /([0-9]+)\#/;
+        // VULNERABLE (fixed above): const regexPattern = /([0-9]+)+\#/;
         // Allow only numbers with a suffix of the letter #, for example: 'XXXXXX#'
         const testComplyWithRequirements = regexPattern.test(bankRouting);
         // if the regex test fails we do not allow saving

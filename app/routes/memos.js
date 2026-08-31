@@ -1,4 +1,5 @@
 const MemosDAO = require("../data/memos-dao").MemosDAO;
+const ESAPI = require("node-esapi");
 const {
     environmentalScripts
 } = require("../../config/config");
@@ -9,8 +10,15 @@ function MemosHandler(db) {
     const memosDAO = new MemosDAO(db);
 
     this.addMemos = (req, res, next) => {
+        // Sanitize memo input to prevent stored XSS while preserving markdown
+        // Remove dangerous HTML tags and attributes
+        let sanitizedMemo = req.body.memo || "";
+        sanitizedMemo = sanitizedMemo.replace(/<script[^>]*>.*?<\/script>/gi, "");
+        sanitizedMemo = sanitizedMemo.replace(/<iframe[^>]*>.*?<\/iframe>/gi, "");
+        sanitizedMemo = sanitizedMemo.replace(/on\w+\s*=\s*["'][^"']*["']/gi, "");
+        sanitizedMemo = sanitizedMemo.replace(/javascript:/gi, "");
 
-        memosDAO.insert(req.body.memo, (err, docs) => {
+        memosDAO.insert(sanitizedMemo, (err, docs) => {
             if (err) return next(err);
             this.displayMemos(req, res, next);
         });
