@@ -21,6 +21,17 @@ function BenefitsDAO(db) {
     };
 
     this.updateBenefits = (userId, startDate, callback) => {
+        // Fixed: Validate date format to prevent injection
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!startDate || !dateRegex.test(startDate)) {
+            return callback(new Error("Invalid date format. Expected YYYY-MM-DD"), null);
+        }
+
+        const parsedDate = new Date(startDate);
+        if (isNaN(parsedDate.getTime())) {
+            return callback(new Error("Invalid date value"), null);
+        }
+
         usersCol.update({
                 _id: parseInt(userId)
             }, {

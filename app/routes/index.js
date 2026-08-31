@@ -65,8 +65,22 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Insecure way to handle redirects by taking redirect url from query string
-        return res.redirect(req.query.url);
+        // Fixed: Validate redirect URL to prevent open redirect
+        const url = req.query.url || "/";
+        const allowedPaths = ["/tutorial", "/research", "/dashboard", "/profile", "/contributions"];
+        const allowedDomains = ["https://owasp.org", "https://nodejs.org"];
+
+        // Check if it's a relative path from allowlist
+        const isAllowedPath = allowedPaths.some(path => url.startsWith(path));
+        // Check if it's an allowed external domain
+        const isAllowedDomain = allowedDomains.some(domain => url.startsWith(domain));
+
+        if (isAllowedPath || isAllowedDomain) {
+            return res.redirect(url);
+        }
+
+        // Default to dashboard if URL is not allowed
+        return res.redirect("/dashboard");
     });
 
     // Research Page
