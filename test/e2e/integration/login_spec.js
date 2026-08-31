@@ -60,7 +60,7 @@ describe("/login behaviour", () => {
       cy.url().should("include", "login");
 
       cy.get(".alert-danger")
-        .contains("Invalid password")
+        .contains("Invalid username and/or password")
         .and("be.visible");
     });
   });
@@ -75,7 +75,7 @@ describe("/login behaviour", () => {
       cy.url().should("include", "login");
 
       cy.get(".alert-danger")
-        .contains("Invalid username")
+        .contains("Invalid username and/or password")
         .and("be.visible");
     });
   });
