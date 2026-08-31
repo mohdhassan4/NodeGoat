@@ -100,8 +100,10 @@ function SessionHandler(db) {
             // by wrapping the below code as a function callback for the method req.session.regenerate()
             // i.e:
             // `req.session.regenerate(() => {})`
-            req.session.userId = user._id;
-            return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            req.session.regenerate(() => {
+                req.session.userId = user._id;
+                return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            });
         });
     };
 
@@ -128,12 +130,9 @@ function SessionHandler(db) {
         const FNAME_RE = /^.{1,100}$/;
         const LNAME_RE = /^.{1,100}$/;
         const EMAIL_RE = /^[\S]+@[\S]+\.[\S]+$/;
-        const PASS_RE = /^.{1,20}$/;
-        /*
         //Fix for A2-2 - Broken Authentication -  requires stronger password
         //(at least 8 characters with numbers and both lowercase and uppercase letters.)
-        const PASS_RE =/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
-        */
+        const PASS_RE = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,20}$/;
 
         errors.userNameError = "";
         errors.firstNameError = "";
