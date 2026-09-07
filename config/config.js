@@ -4,8 +4,16 @@ const util = require("util");
 
 const finalEnv = process.env.NODE_ENV || "development";
 
-const allConf = require(path.resolve(__dirname + "/../config/env/all.js"));
-const envConf = require(path.resolve(__dirname + "/../config/env/" + finalEnv.toLowerCase() + ".js")) || {};
+const allConf = require("./env/all.js");
+
+// Allowlist valid environments to prevent arbitrary file access
+const envConfigs = {
+    "development": require("./env/development.js"),
+    "production": require("./env/production.js"),
+    "test": require("./env/test.js")
+};
+
+const envConf = envConfigs[finalEnv.toLowerCase()] || envConfigs["development"];
 
 const config = { ...allConf, ...envConf };
 
