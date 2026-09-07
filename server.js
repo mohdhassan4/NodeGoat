@@ -109,7 +109,9 @@ MongoClient.connect(db, (err, db) => {
             // Set domain from config (allows environment-specific configuration)
             domain: cookieDomain,
             // Set session expiration to 24 hours
-            maxAge: 86400000
+            maxAge: 86400000,
+            // Set path to allow session cookie across all paths
+            path: "/"
         }
 
     }));
