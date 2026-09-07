@@ -94,7 +94,9 @@ MongoClient.connect(db, (err, db) => {
         cookie: {
             httpOnly: true,
             // secure flag matches deployment: true in production (HTTPS), false in dev/test (HTTP)
-            secure: process.env.NODE_ENV === "production"
+            secure: process.env.NODE_ENV === "production",
+            // domain: undefined is most restrictive (cookie only sent to exact domain, not subdomains)
+            domain: undefined
         }
 
     }));
