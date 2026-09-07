@@ -90,13 +90,14 @@ MongoClient.connect(db, (err, db) => {
         */
 
         // Fix for A3 - XSS and CWE-522
-        // TODO: Add "maxAge"
         cookie: {
             httpOnly: true,
             // secure flag matches deployment: true in production (HTTPS), false in dev/test (HTTP)
             secure: process.env.NODE_ENV === "production",
             // domain: undefined is most restrictive (cookie only sent to exact domain, not subdomains)
-            domain: undefined
+            domain: undefined,
+            // Session expires after 24 hours (86400000 ms)
+            maxAge: 86400000
         }
 
     }));
