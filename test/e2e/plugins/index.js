@@ -9,6 +9,8 @@
 // ***********************************************************
 
 const { port, hostName } = require("../../../config/env/all");
+const fs = require("fs");
+const path = require("path");
 
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
@@ -17,7 +19,11 @@ const { port, hostName } = require("../../../config/env/all");
 module.exports = (on, config) => {
   "use strict";
 
-  config.baseUrl = `http://${hostName}:${port}`;
+  // Check if HTTPS certificates exist to match server configuration
+  const certPath = path.resolve(__dirname, "../../../artifacts/cert/server.crt");
+  const protocol = fs.existsSync(certPath) ? "https" : "http";
+
+  config.baseUrl = `${protocol}://${hostName}:${port}`;
 
   return config;
 };

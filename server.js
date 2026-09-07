@@ -10,22 +10,30 @@ const swig = require("swig");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
 const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
-const { port, db, cookieSecret } = require("./config/config"); // Application config properties
-/*
+const { port, db, cookieSecret, cookieDomain } = require("./config/config"); // Application config properties
+
 // Fix for A6-Sensitive Data Exposure
 // Load keys for establishing secure HTTPS connection
-const fs = require("fs");
-const https = require("https");
-const path = require("path");
-const httpsOptions = {
-    key: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "./artifacts/cert/server.crt"))
-};
-*/
+let httpsOptions = null;
+try {
+    const keyPath = path.resolve(__dirname, "./artifacts/cert/server.key");
+    const certPath = path.resolve(__dirname, "./artifacts/cert/server.crt");
+    if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+        httpsOptions = {
+            key: fs.readFileSync(keyPath),
+            cert: fs.readFileSync(certPath)
+        };
+    }
+} catch (err) {
+    console.log("HTTPS certificates not available, will use HTTP");
+}
 
 MongoClient.connect(db, (err, db) => {
     if (err) {
@@ -80,24 +88,31 @@ MongoClient.connect(db, (err, db) => {
         //    return genuuid() // use UUIDs for session IDs
         //},
         secret: cookieSecret,
+        // Fix for A5 - Security MisConfig
+        // Use generic cookie name instead of default to prevent fingerprinting
+        name: "sessionId",
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
         key: "sessionId",
         */
 
-        /*
         // Fix for A3 - XSS
-        // TODO: Add "maxAge"
+        // Secure cookie settings
         cookie: {
-            httpOnly: true
-            // Remember to start an HTTPS server to get this working
-            // secure: true
+            httpOnly: true,
+            // Set secure flag in production (assumes HTTPS)
+            secure: process.env.NODE_ENV === "production",
+            // Set domain from config (allows environment-specific configuration)
+            domain: cookieDomain,
+            // Set session expiration to 24 hours
+            maxAge: 86400000,
+            // Set path to allow session cookie across all paths
+            path: "/"
         }
-        */
 
     }));
 
@@ -141,17 +156,17 @@ MongoClient.connect(db, (err, db) => {
         */
     });
 
-    // Insecure HTTP connection
-    http.createServer(app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-
-    /*
     // Fix for A6-Sensitive Data Exposure
-    // Use secure HTTPS protocol
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`Express http server listening on port ${port}`);
-    });
-    */
+    // Use secure HTTPS protocol when certificates are available
+    if (httpsOptions) {
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express https server listening on port ${port}`);
+        });
+    } else {
+        // Fall back to HTTP for development when certificates are not available
+        http.createServer(app).listen(port, () => {
+            console.log(`Express http server listening on port ${port}`);
+        });
+    }
 
 });
