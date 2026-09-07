@@ -68,8 +68,36 @@ const index = (app, db) => {
 
     // Handle redirect for learning resources link
     app.get("/learn", isLoggedIn, (req, res) => {
-        // Insecure way to handle redirects by taking redirect url from query string
-        return res.redirect(req.query.url);
+        // Validate redirect URL to prevent open redirects
+        const redirectUrl = req.query.url;
+
+        // Default redirect if no URL provided
+        if (!redirectUrl || typeof redirectUrl !== "string") {
+            return res.redirect("/dashboard");
+        }
+
+        // Allowlist of safe internal paths
+        const allowedPaths = [
+            "/dashboard",
+            "/profile",
+            "/contributions",
+            "/benefits",
+            "/allocations",
+            "/memos",
+            "/research",
+            "/tutorial"
+        ];
+
+        // Validate that URL is an allowed internal path
+        const isAllowed = allowedPaths.some(path =>
+            redirectUrl === path || redirectUrl.startsWith(path + "/") || redirectUrl.startsWith(path + "?")
+        );
+
+        if (!isAllowed) {
+            return res.redirect("/dashboard");
+        }
+
+        return res.redirect(redirectUrl);
     });
 
     // Research Page

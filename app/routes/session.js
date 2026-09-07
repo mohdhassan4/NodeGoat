@@ -114,7 +114,12 @@ function SessionHandler(db) {
             // i.e:
             // `req.session.regenerate(() => {})`
             req.session.userId = user._id;
-            return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            // Redirect based on user role with explicit path validation
+            if (user.isAdmin) {
+                return res.redirect("/benefits");
+            } else {
+                return res.redirect("/dashboard");
+            }
         });
     };
 
