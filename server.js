@@ -91,6 +91,8 @@ MongoClient.connect(db, (err, db) => {
             secure: process.env.NODE_ENV === "production",
             // domain: undefined is most restrictive (cookie only sent to exact domain, not subdomains)
             domain: undefined,
+            // path: cookie applies to all paths under this domain
+            path: "/",
             // Session expires after 24 hours (86400000 ms)
             maxAge: 86400000
         }
