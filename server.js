@@ -92,7 +92,9 @@ MongoClient.connect(db, (err, db) => {
             // Secure flag enabled in production (HTTPS), disabled in development (HTTP)
             secure: process.env.NODE_ENV === "production",
             // Set session expiration to 1 hour (3600000 ms)
-            maxAge: 3600000
+            maxAge: 3600000,
+            // Set cookie path to root - cookie accessible across all application routes
+            path: "/"
         }
 
     }));
