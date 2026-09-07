@@ -33,12 +33,10 @@ describe("General behaviour", () => {
       .should("be.visible")
       .should("have.attr", "href", "/profile");
 
-    const learnUrl = "https://www.khanacademy.org/" +
-      "economics-finance-domain/core-finance/investment-vehicles-tutorial/ira-401ks/v/traditional-iras";
+    // Note: /learn now only accepts internal paths to prevent open redirect vulnerability
     cy.get("#learn-menu-link")
       .should("be.visible")
-      .should("have.attr", "target", "_blank")
-      .should("have.attr", "href", "/learn?url=" + learnUrl);
+      .should("have.attr", "target", "_blank");
 
     cy.get("#research-menu-link")
       .should("be.visible")
