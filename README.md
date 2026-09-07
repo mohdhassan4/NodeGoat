@@ -10,7 +10,7 @@ OWASP Top 10 for Node.js web applications:
 
 This application bundled a tutorial page that explains the OWASP Top 10 vulnerabilities and how to fix them.
 
-Once the application is running, you can access the tutorial page at [http://localhost:4000/tutorial](http://localhost:4000/tutorial) (or the port you have configured).
+Once the application is running, you can access the tutorial page at [https://localhost:4000/tutorial](https://localhost:4000/tutorial) (or the port you have configured).
 
 ### Do it!
 
@@ -70,11 +70,11 @@ The database comes pre-populated with these user accounts created as part of the
    By default this will use the "development" configuration, but the desired config can be passed as an argument if required.
 
 7) Start the server. You can run the server using node or nodemon:
-   * Start the server with node. This starts the NodeGoat application at [http://localhost:4000/](http://localhost:4000/):
+   * Start the server with node. This starts the NodeGoat application at [https://localhost:4000/](https://localhost:4000/):
      ```
      npm start
      ```
-   * Start the server with nodemon, which will automatically restart the application when you make any changes. This starts the NodeGoat application at [http://localhost:5000/](http://localhost:5000/):
+   * Start the server with nodemon, which will automatically restart the application when you make any changes. This starts the NodeGoat application at [https://localhost:5000/](https://localhost:5000/):
      ```
      npm run dev
      ```
@@ -106,7 +106,7 @@ The repo includes the Dockerfile and docker-compose.yml necessary to set up the 
    docker-compose build
    ```
 
-5) Run the app, this starts the NodeGoat application at http://localhost:4000/:
+5) Run the app, this starts the NodeGoat application at https://localhost:4000/:
    ```
    docker-compose up
    ```

@@ -294,7 +294,7 @@
                             <code>threshold</code> field in the request's query, which will create a valid JavaScript expression and satisfy the
                             <code> $where</code> query as well, resulting in a DoS attack on the MongoDB server:
                         </p>
-                        <pre>http://localhost:4000/allocations/2?threshold=5';while(true){};' </pre>
+                        <pre>https://localhost:4000/allocations/2?threshold=5';while(true){};' </pre>
                         <p>
                             You can also just drop the following into the Stocks Threshold input box:
                         </p>
@@ -348,7 +348,7 @@ console.log('Error: attempt to login with invalid user: ', userName);
                         </pre>
                         <p>When user input is unsanitized and the output mechanism is an ordinary terminal stdout facility then the application will be vulnerable to CRLF injection, where an attacker can create a malicious payload as follows:
                         <pre>
-curl http://localhost:4000/login -X POST --data 'userName=vyva%0aError: alex moldovan failed $1,000,000 transaction&password=Admin_123&_csrf='
+curl https://localhost:4000/login -X POST --data 'userName=vyva%0aError: alex moldovan failed $1,000,000 transaction&password=Admin_123&_csrf='
                         </pre>
                         Where the <code>userName</code> parameter is encoding in the request the LF symbol which will result in a new line to begin. Resulting log output will look as follows:
                         <pre>
