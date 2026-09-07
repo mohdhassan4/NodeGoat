@@ -82,22 +82,19 @@ MongoClient.connect(db, (err, db) => {
         secret: cookieSecret,
         // Both mandatory in Express v4
         saveUninitialized: true,
-        resave: true
+        resave: true,
         /*
         // Fix for A5 - Security MisConfig
         // Use generic cookie name
         key: "sessionId",
         */
 
-        /*
-        // Fix for A3 - XSS
-        // TODO: Add "maxAge"
+        // Fix for A3 - XSS and Sensitive Data Exposure
         cookie: {
-            httpOnly: true
-            // Remember to start an HTTPS server to get this working
-            // secure: true
+            httpOnly: true,
+            // Secure flag enabled in production (HTTPS), disabled in development (HTTP)
+            secure: process.env.NODE_ENV === "production"
         }
-        */
 
     }));
 
