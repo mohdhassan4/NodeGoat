@@ -1,5 +1,6 @@
 const ResearchDAO = require("../data/research-dao").ResearchDAO;
 const needle = require("needle");
+const ESAPI = require("node-esapi");
 const {
     environmentalScripts
 } = require("../../config/config");
@@ -22,7 +23,7 @@ function ResearchHandler(db) {
                 res.write("<h1>The following is the stock information you requested.</h1>\n\n");
                 res.write("\n\n");
                 if (body) {
-                    res.write(body);
+                    res.write(ESAPI.encoder().encodeForHTML(body));
                 }
                 return res.end();
             });
