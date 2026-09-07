@@ -14,7 +14,7 @@ const marked = require("marked");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
-const { port, db, cookieSecret } = require("./config/config"); // Application config properties
+const { port, db, cookieSecret, cookieDomain } = require("./config/config"); // Application config properties
 /*
 // Fix for A6-Sensitive Data Exposure
 // Load keys for establishing secure HTTPS connection
@@ -94,7 +94,9 @@ MongoClient.connect(db, (err, db) => {
         cookie: {
             httpOnly: true,
             // Set secure flag in production (assumes HTTPS)
-            secure: process.env.NODE_ENV === "production"
+            secure: process.env.NODE_ENV === "production",
+            // Set domain from config (allows environment-specific configuration)
+            domain: cookieDomain
         }
 
     }));
