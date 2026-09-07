@@ -12,11 +12,12 @@ function MemosDAO(db) {
 
     const memosCol = db.collection("memos");
 
-    this.insert = (memo, callback) => {
+    this.insert = (memo, userId, callback) => {
 
         // Create allocations document
         const memos = {
             memo,
+            userId,
             timestamp: new Date()
         };
 
@@ -30,6 +31,19 @@ function MemosDAO(db) {
         }).toArray((err, memos) => {
             if (err) return callback(err, null);
             if (!memos) return callback("ERROR: No memos found", null);
+            callback(null, memos);
+        });
+    };
+
+    this.getMemosForUser = (userId, callback) => {
+
+        memosCol.find({
+            userId: userId
+        }).sort({
+            timestamp: -1
+        }).toArray((err, memos) => {
+            if (err) return callback(err, null);
+            if (!memos || memos.length === 0) return callback(null, []);
             callback(null, memos);
         });
     };

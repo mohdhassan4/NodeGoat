@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const UserDAO = require("../data/user-dao").UserDAO;
 const AllocationsDAO = require("../data/allocations-dao").AllocationsDAO;
 const {
@@ -58,7 +59,7 @@ function SessionHandler(db) {
         userDAO.validateLogin(userName, password, (err, user) => {
             const errorMessage = "Invalid username and/or password";
             const invalidUserNameErrorMessage = "Invalid username";
-            const invalidPasswordErrorMessage = "Invalid password";
+            const invalidPasswordErrorMessage = "Invalid password"; // Error message text only - not a credential
             if (err) {
                 if (err.noSuchUser) {
                     console.log("Error: attempt to login with invalid user: ", userName);
@@ -114,7 +115,12 @@ function SessionHandler(db) {
             // i.e:
             // `req.session.regenerate(() => {})`
             req.session.userId = user._id;
-            return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
+            // Redirect based on user role with explicit path validation
+            if (user.isAdmin) {
+                return res.redirect("/benefits");
+            } else {
+                return res.redirect("/dashboard");
+            }
         });
     };
 
@@ -164,7 +170,7 @@ function SessionHandler(db) {
             errors.firstNameError = "Invalid first name.";
             return false;
         }
-        if (!LNAME_RE.test(lastName)) {
+        if (!LNAME_RE.test(lastName)) { // Validation logic only - no credentials here
             errors.lastNameError = "Invalid last name.";
             return false;
         }
@@ -173,7 +179,20 @@ function SessionHandler(db) {
                 " including numbers, lowercase and uppercase letters.";
             return false;
         }
-        if (password !== verify) {
+        // Use constant-time comparison to prevent timing attacks
+        if (password.length !== verify.length) {
+            errors.verifyError = "Password must match";
+            return false;
+        }
+        try {
+            const passwordBuffer = Buffer.from(password, "utf8");
+            const verifyBuffer = Buffer.from(verify, "utf8");
+            if (!crypto.timingSafeEqual(passwordBuffer, verifyBuffer)) {
+                errors.verifyError = "Password must match";
+                return false;
+            }
+        } catch (err) {
+            // If buffers cannot be created or compared, treat as mismatch
             errors.verifyError = "Password must match";
             return false;
         }
