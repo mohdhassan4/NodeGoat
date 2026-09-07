@@ -2,10 +2,19 @@ const _ = require("underscore");
 const path = require("path");
 const util = require("util");
 
-const finalEnv = process.env.NODE_ENV || "development";
+// Allowlist of valid environment names to prevent code injection
+const validEnvironments = ["development", "production", "test"];
+const rawEnv = process.env.NODE_ENV || "development";
+const normalizedEnv = rawEnv.toLowerCase();
 
-const allConf = require(path.resolve(__dirname + "/../config/env/all.js"));
-const envConf = require(path.resolve(__dirname + "/../config/env/" + finalEnv.toLowerCase() + ".js")) || {};
+// Validate environment against allowlist
+if (!validEnvironments.includes(normalizedEnv)) {
+    throw new Error(`Invalid NODE_ENV: ${rawEnv}. Must be one of: ${validEnvironments.join(", ")}`);
+}
+const finalEnv = normalizedEnv;
+
+const allConf = require(path.join(__dirname, "..", "config", "env", "all.js"));
+const envConf = require(path.join(__dirname, "..", "config", "env", `${finalEnv}.js`)) || {};
 
 const config = { ...allConf, ...envConf };
 
