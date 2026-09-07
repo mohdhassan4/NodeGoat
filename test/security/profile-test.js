@@ -34,7 +34,7 @@ var state = {
 };
 
 var sutUserName = "user1";
-var sutUserPassword = "User1_123";
+var sutUserPassword = "User1_123"; // Test fixture password - not a real credential
 
 chrome.setDefaultService(service);
 
